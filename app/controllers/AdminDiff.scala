@@ -230,6 +230,8 @@ class AdminDiff extends AdminBase with Logging {
   // todo auth that user belongs to realm
   def difflist(localRealm: String, toRealm: String, remote: String, remoteLabel:String) = FAUR { implicit request =>
 
+    val REDIR = "\"" + s"/admin/difflist/$localRealm/$toRealm?remoteLabel=dieselapps&remote=https://${toRealm}.dieselapps.com" + "\""
+
     // get last saved remote from cookies
     if(remote.length == 0) ROK.r admin { implicit stok =>
       views.html.admin.adminDifflist(localRealm, toRealm, remote, remoteLabel, Nil, Nil, Nil)
@@ -286,17 +288,17 @@ class AdminDiff extends AdminBase with Logging {
     } catch {
       case x: CommRtException if x.httpCode == 401 => {
         audit(s"ERROR getting remote diffs ${x.getMessage} ", x)
-        Ok(
+        ImATeapot(
           s"error HTTP 401 (Unauthorized) - did you change your password locally or remotely? Do you have the same " +
-              s"account locally and on remote?\n\nError details: $x ")
+              s"account locally and on remote?\n\nError details: $x ").as("text/html")
       }
       case x: CommRtException => {
         audit(s"ERROR getting remote diffs ${x.getMessage} ", x)
-        Ok(s"error HTTP ${x.httpCode} \n\nerror details: $x ")
+        ImATeapot(s"error HTTP ${x.httpCode} \n\nerror details: $x \n\nBring it up or point this to <a href=${REDIR}>the cloud</a>").as("text/html")
       }
       case x: Throwable => {
         audit("ERROR getting remote diffs", x)
-        Ok("Unknown error\n\ndetails: " + x)
+        ImATeapot(s"Unkown error <br>error details: $x <br><br>Bring it up or point this to <a href=${REDIR}>the cloud</a>").as("text/html")
       }
     }
   }
