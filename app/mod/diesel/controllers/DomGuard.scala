@@ -517,6 +517,30 @@ class DomGuard extends DomApiBase with Logging {
     }
   }
 
+  // deprected already - remove in June '24
+  def dieselStatus2 = RAction.async { implicit stok =>
+    stok.au.map { au =>
+      DomGuardian.findLastRun(stok.realm, au.userName).map { r =>
+        Future.successful {
+          Ok(quickBadge(r.failed, r.total, r.duration))
+        }
+      }.getOrElse {
+        // start a check in the background
+        if (DomGuardian.enabled(stok.realm) && DomGuardian.onAuto(stok.realm))
+          startCheck(stok.realm, stok.au, Guardian.autoQuery(stok.realm))
+
+        // just return right away
+        Future.successful {
+          Ok(quickBadge(-1, -1, -1, ""))
+        }
+      }
+    }.getOrElse {
+      Future.successful {
+        Ok("") // todo when no user, don't call this
+      }
+    }
+  }
+
   @inline class cs() {
     val sb = new StringBuilder()
     def <<(x: Any) = { (sb append x + "\n"); this }

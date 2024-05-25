@@ -7,6 +7,7 @@ browse a domain
   @height()=@{
     if(left.size < 3 && middle.size < 3 && right.size < 3) "80px"
     else if(left.size > 5 || middle.size > 5 || right.size > 5) "200px"
+    else if(left.size > 20 || middle.size > 20 || right.size > 20) "600px"
     else "130px"
   }
 
@@ -32,8 +33,8 @@ browse a domain
 
   </div>
 
-  <div class="col-sm-5 alert alert-info" style="height: @height(); overflow-y: auto; vertical-align: middle; text-align: left;">
-        @right.distinct.map { assoc =>
+  <div class="col-sm-5 alert alert-info" style="height: @height(); overflow-y: scroll; vertical-align: middle; text-align: left;">
+        @right.distinct.sortBy(_.z).map { assoc =>
           <a href="@mkLink(assoc.z, "to", Some(assoc))"><b>@assoc.z</b></a>
           @if(assoc.zRole.length > 0) {
             <small>(@assoc.zRole)</small>

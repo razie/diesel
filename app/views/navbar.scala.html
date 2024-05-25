@@ -41,7 +41,7 @@ creates the navigation bar
 }
 
 @menuBadges()=@{
-  if(stok.au.exists(_.isAdmin)) web().navMenu ++ Seq("admin.badgeRefreshAllTests" -> "/diesel/statusAll")
+  if(stok.au.exists(_.isAdmin)) web().navMenu ++ Seq("admin.badgeRefreshAllTests" -> "/diesel/guard/statusAll")
   else web().navMenu
 }
 
@@ -434,6 +434,14 @@ require(['jquery'], function($){
 @*                <li><a href="/diesel/swagger/ui/msg">Msg</a></li>*@
 @*              </ul>*@
               </li>
+
+@*              <li><a href="#">Domain<span class="caret"></span></a>*@
+@*                <ul class="dropdown-menu sub-menu">*@
+                  <li><a href="/diesel/dom/browse">Browse Domain</a></li>
+                  <li><a href="/diesel/dom/reset">Reset Domain</a></li>
+@*                </ul>*@
+@*          </li>*@
+
 
             </ul>
           </li>

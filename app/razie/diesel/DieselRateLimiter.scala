@@ -70,7 +70,7 @@ object DieselRateLimiter extends razie.Logging {
     path.startsWith("/diesel/rest/") ||
         path.startsWith("/diesel/mock/") ||
         path.startsWith("/razadmin/") ||
-        path.startsWith("/diesel/status")
+        path.startsWith("/diesel/guard/status")
 //        path.startsWith("/diesel/react/") ||
 //        path.startsWith("/diesel/start/") ||
 //        path.startsWith("/diesel/fiddle/react/") ||

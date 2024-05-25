@@ -33,7 +33,7 @@ a JS with HTML and CSS fiddle
 
 @if(css.contains("light")) {
 
-  <style>
+<style>
       .ace-sendline {
         background-color: lightsalmon;
         position:absolute;
@@ -55,7 +55,7 @@ a JS with HTML and CSS fiddle
 
 } else {              @*** dark theme ***@
 
-  <style>
+<style>
       .ace-sendline {
         background-color: #a95a5a;
         position:absolute;
@@ -69,10 +69,18 @@ a JS with HTML and CSS fiddle
   font-weight: bold;
   position:absolute;
 }
-.ace-primaryline {
-  background-color: darkblue;
-  position:absolute;
+      .ace-primaryline {
+        background-color: darkblue;
+        position:absolute;
+      }
+.ace-twilight .ace_marker-layer .ace_selection {
+  background: rgba(243, 211, 10, 0.86);
 }
+
+.ace-twilight .ace_comment {
+  color: #b3b3b3;
+}
+
   </style>
 }
 
@@ -238,6 +246,8 @@ Command reference (see more about [[specs.Topic:Expressions_and_pattern_matching
         title="Load saved HTML trace"></span></a></span>
         <span class="pull-right">&nbsp;<a href="javascript:saveTraceFromFiddle()"><span class="glyphicon glyphicon-save"
         title="Save HTML trace to file"></span></a></span>
+        <span class="pull-right">&nbsp;<a href="javascript:viewTrace()"><span class="glyphicon glyphicon-share"
+        title="Open trace in viewer"></span></a></span>
       </div>
     </div>
 
@@ -660,8 +670,9 @@ function fiddle_updateStoryMarkers(response) {
   if(storyEditor && response != null && typeof response.ast != "undefined") {
     storyHasErrors = updateMarkers(storyEditor, response.ast);
     if(storyHasErrors) {
-      $("#storyChanged").addClass("label label-danger");
       $("#storyChanged").prop('title', "has errors");
+      $('#storyChanged').removeClass();
+      $("#storyChanged").addClass("label label-danger");
     }
   }
 }
@@ -969,7 +980,11 @@ setInterval(refreshFunc, 500);
 
     // false for testing
     if(true) try {
-      dateSocket = new WS('@mod.diesel.controllers.routes.DomFiddles.espOpen(reactor,id).webSocketURL()(stok.request.get)');
+      var isSec = window.location.href.startsWith("https");
+      var wsurl = isSec ?
+          '@mod.diesel.controllers.routes.DomFiddles.espOpen(reactor,id).webSocketURL(true)(stok.request.get)':
+          '@mod.diesel.controllers.routes.DomFiddles.espOpen(reactor,id).webSocketURL(false)(stok.request.get)';
+      dateSocket = new WS(wsurl);
       console.log("WS - done setup WS... ");
 
       dateSocket.onmessage = function(event) {
@@ -1010,9 +1025,9 @@ setInterval(refreshFunc, 500);
 specChanged("@specChanged");
 fiddle_storyChanged("@storyChanged");
 
-function specChanged(spec) {
+function specChanged(spechaschanged) {
   $('#specChanged').removeClass();
-  if(spec === "true" || spec === true) {
+  if(spechaschanged === "true" || spechaschanged === true) {
     $("#specChanged").addClass("label label-warning");
     $("#specChanged").prop('title', "Current draft differs from original - save it");
   } else {
@@ -1021,9 +1036,12 @@ function specChanged(spec) {
   }
 }
 
-function fiddle_storyChanged(story) {
+function fiddle_storyChanged(storyhaschanged) {
   $('#storyChanged').removeClass();
-  if(story === "true" || story === true) {
+  if(storyHasErrors) {
+    $("#storyChanged").addClass("label label-danger");
+    $("#storyChanged").prop('title', "has errors");
+  } else if(storyhaschanged === "true" || storyhaschanged === true) {
     $("#storyChanged").addClass("label label-warning");
     $("#storyChanged").prop('title', "Current draft differs from original - save it");
   } else {
@@ -1312,6 +1330,16 @@ function saveTraceFromFiddle() {
   }
 
   saveTrace(currEngineData.info.engineId);
+}
+
+function viewTrace() {
+  if(currEngineData == null) {
+    alert("No processing trace to save... ");
+    return;
+  }
+
+  var url = window.location.href = "/diesel/viewAst/" + (currEngineData.info.engineId);
+  window.open(url, '_blank').focus();
 }
 
 // it's on load because otherwise the div has no contents
