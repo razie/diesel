@@ -159,8 +159,9 @@ class AdminDiff extends AdminBase with Logging {
             y,
             if (x.hash == y.hash && x.tags == y.tags
                 && x.name == y.name && x.cat != y.cat
-                && x.realm == y.realm) "-" else if (x.ver > y.ver || x.updDtm.isAfter(
-              y.updDtm)) "L" else "R",
+//                && x.realm == y.realm) "-" else if (x.ver > y.ver || x.updDtm.isAfter(
+                // don't use version as it may be misleading. problem may be with time sync but eh...
+                && x.realm == y.realm) "-" else if (x.updDtm.isAfter(y.updDtm) || y.ver == 1) "L" else "R", // ver 1 means docker build
             dk
         )
       }
@@ -204,7 +205,9 @@ class AdminDiff extends AdminBase with Logging {
         (x,
             y,
             if (x.hash == y.hash && x.tags == y.tags && x.cat == y.cat) "-"
-            else if (x.ver > y.ver || x.updDtm.isAfter(y.updDtm)) "L"
+//            else if (x.ver > y.ver || x.updDtm.isAfter(y.updDtm)) "L"
+            // don't use version as it may be misleading. problem may be with time sync but eh...
+            else if (x.updDtm.isAfter(y.updDtm) || y.ver == 1) "L" // ver 1 means docker build
             else "R",
             dk
         )
@@ -290,7 +293,7 @@ class AdminDiff extends AdminBase with Logging {
         audit(s"ERROR getting remote diffs ${x.getMessage} ", x)
         ImATeapot(
           s"error HTTP 401 (Unauthorized) - did you change your password locally or remotely? Do you have the same " +
-              s"account locally and on remote?\n\nError details: $x ").as("text/html")
+              s"account locally and on remote?\n\nError details: $x \n\n Fix it up or point this to <a href=${REDIR}>the cloud</a>").as("text/html")
       }
       case x: CommRtException => {
         audit(s"ERROR getting remote diffs ${x.getMessage} ", x)
@@ -317,13 +320,13 @@ class AdminDiff extends AdminBase with Logging {
       val patch =
         DiffUtils.diff(localWid.content.get.lines.toList, remote.lines.toList)
 
-      def diffTable = s"""<small>${views.html.admin.diffTable(side, patch, Some(("How", "Local", "Remote")))}</small>"""
+      def diffTable = s"""<small>${views.html.admin.diffTable(side, patch, Some(("How", "Local (v"+localWid.page.get.ver+") upd=" + localWid.page.get.updDtm, "Remote (v"+t._1.ver + ") upd=" + t._1.updDtm)))}</small>"""
 
       if ("yes" == onlyContent.toLowerCase) {
         // only content diff, using diffTable
         val url = routes.AdminDiff.showDiff("no", side, localRealm, toRealm, targetHost, iwid, leftId, rightId)
         Ok(
-          s"""<a href="$url">See separate</a><br>""" + diffTable
+          s"""Diffs for <span style="color:#34caee;font-weight:bold">${localWid.name}</span> - <small><a href="$url">See in separate page</a></small><br>""" + diffTable
         )
       } else {
         // full diff, not just content
