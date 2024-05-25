@@ -119,6 +119,26 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
         P.fromTypedValue("", av.hashCode, WTypes.wt.NUMBER)
       }
 
+      case "iff" => {
+        // iff (1 > 2, a, b) : Boolean
+
+        val av = firstParm.getOrElse {
+          throw new DieselExprException("Need three arguments.")
+        }.calculatedTypedValue
+
+        val p = if (av.asBoolean) {
+          secondParm.getOrElse {
+            throw new DieselExprException("Need three arguments.")
+          }.calculatedP
+        } else {
+          thirdParm.getOrElse {
+            throw new DieselExprException("Need three arguments.")
+          }.calculatedP
+        }
+
+        p.copy(name="")
+      }
+
       case "cmp" => {
         // cmp (op=">", a, b) : Boolean
 
@@ -453,7 +473,7 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
         P.fromTypedValue("", ad.toInstant(ZoneOffset.UTC).toEpochMilli, WTypes.wt.NUMBER)
       }
 
-      case _ => {
+      case n@_ if n.contains(".") => {
 
         // must be in form x...y.func
         val PAT = """([\w.]+)[./](\w+)""".r
@@ -542,6 +562,9 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
           throw new DieselExprException("Function/Message not found (you need a $msg declaration to call this) OR no payload resulted: " + expr)
         }
       }
+
+      case n@_ =>
+        throw new DieselExprException("Function/Message not built-in: " + expr)
     }
   }
 
