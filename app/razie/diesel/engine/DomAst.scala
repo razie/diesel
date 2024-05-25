@@ -332,7 +332,8 @@ case class DomAst(
       }
 
     if (!shouldSkip(this)) {
-      h(s"""<div kind="$kind" level="$level">""") +
+      val hidden = if(kind == AstKinds.VERBOSE) """style="display:none" """
+      h(s"""<div kind="$kind" level="$level" $hidden>""") +
           meTos(level, html) + "\n" +
           toschildren(level, children).mkString +
           h("</div>")

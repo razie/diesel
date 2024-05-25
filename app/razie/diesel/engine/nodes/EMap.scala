@@ -133,7 +133,7 @@ case class EMapCls(cls: String, met: String, attrs: Attrs, arrow:String="=>", co
       val v = attrs.head.currentStringValue
       val m = if (v.trim.startsWith("\"")) v.replaceFirst("^\"", "").replaceFirst("\"$", "") else v
       s"""<small><span class="label label-primary">step</span>&nbsp;${m}</small>"""
-    }//    if("step" == met && "diesel" == cls) s"""<span style="font-weight:bold">${m}</span>"""
+    }
     else
       ea(cls, met, "", true, AstKinds.GENERATED) + " " + toHtmlAttrs(attrs)
 
