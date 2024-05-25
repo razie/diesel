@@ -40,8 +40,18 @@ class RDomain(
 
   /** compose domains parsed in different places */
   def plus(other: RDomain, newName:String=name) = {
-    val x = new RDomain(newName, classes ++ other.classes, assocs ++ other.assocs, diamonds ++ other.diamonds, objects ++ other.objects, funcs ++ other.funcs)
+    // filter out the artificial roots if any - they will need to be added back
+    val x = new RDomain(
+      newName,
+      if(other.name != "root") classes.filter(_._1 != "Domain") ++ other.classes.filter(_._1 != "Domain")
+      else classes ++ other.classes,
+      if(other.name != "root") assocs.filter(_.aRole != "root") ++ other.assocs.filter(_.aRole != "root")
+      else assocs ++ other.assocs,
+      diamonds ++ other.diamonds,
+      objects ++ other.objects,
+      funcs ++ other.funcs)
         .withSpecs(specs)
+
     x.moreElements.appendAll(moreElements)
     x.moreElements.appendAll(other.moreElements)
     x.specs.appendAll(other.specs)
@@ -65,8 +75,15 @@ class RDomain(
   }
 
   /** add a fake Domain root so you can start browsing it there */
-  def addRoot = this plus new RDomain("root", Map("Domain" -> C("Domain", "", "", Nil, "")),
-    classes.values.toList.map(c=>A("", "Domain", c.name, "root", "fake")))
+  def addRoot : RDomain = this plus new RDomain("root",
+    Map("Domain" -> C("Domain", "", "", Nil, "")),
+    classes
+        .values
+        .toList
+        .filter(c=> ! needsParentBool(c.name))
+        .map(c =>
+      A("", "Domain", c.name, "root", "synth"))
+  )
 
   /** simple json like representation of domain for browsing */
   def tojmap : Map[String, Any] = {
@@ -164,8 +181,13 @@ class RDomain(
   def prop(cat: String, name: String): Option[String] =
     this.classes.get(cat).flatMap(_.props.find(_.name == name).map(_.currentStringValue))
 
+  def needsParentBool(cat: String) =
+    this.assocs.exists(t => t.a == cat && t.zRole == "Parent" && !Array("User", "Person").contains(t.z)) ||
+    this.assocs.exists(t => t.z == cat && t.aRole == "Parent" && !Array("User", "Person").contains(t.a))
+
   def needsParent(cat: String) =
-    this.assocs.filter(t => t.a == cat && t.zRole == "Parent" && !Array("User", "Person").contains(t.z)).map(_.z)
+    this.assocs.filter(t => t.a == cat && t.zRole == "Parent" && !Array("User", "Person").contains(t.z)).map(_.z) :::
+    this.assocs.filter(t => t.z == cat && t.aRole == "Parent" && !Array("User", "Person").contains(t.a)).map(_.a)
 
   /** basic subtype check
     *

@@ -67,20 +67,20 @@ trait Reactor {
   * Wikis can mixin other wikis - linearized multiple inheritance.
   */
 abstract class ReactorImpl (val realm:String, val fallBacks:List[Reactor] = Nil, val we:Option[WikiEntry]) extends Reactor {
-  val mixins = new Mixins[Reactor](fallBacks)
-  lazy val club = props.wprop("club").flatMap(Wikis.find)
+  override val mixins = new Mixins[Reactor](fallBacks)
+  override lazy val club = props.wprop("club").flatMap(Wikis.find)
 
-  lazy val userRoles = websiteProps.prop("userRoles").toList.flatMap(_.split(','))
-  lazy val adminEmails = websiteProps.prop("adminEmails").toList.flatMap(_.split(','))
+  override lazy val userRoles = websiteProps.prop("userRoles").toList.flatMap(_.split(','))
+  override lazy val adminEmails = websiteProps.prop("adminEmails").toList.flatMap(_.split(','))
 
   // list of super reactors linearized
-  val supers : Array[String] = {
+  override val supers : Array[String] = {
     if(realm == WikiReactors.RK) Array(WikiReactors.RK)
     else mixins.flattened.map(_.realm).toArray
   }
 
   /** Admin:UserHome if user or Admin:Home or Reactor:realm if nothing else is defined */
-  def mainPage(au:Option[WikiUser]) = {
+  override def mainPage(au:Option[WikiUser]) = {
     def dflt = WID("Admin", "UserHome").r(realm).page.map(_.wid)
 //    val p = au.flatMap {user=>
 //      if(adminEmails.contains(Dec(user.email)))
@@ -104,11 +104,11 @@ abstract class ReactorImpl (val realm:String, val fallBacks:List[Reactor] = Nil,
   }
 
   /* deprecated - use props */
-  lazy val websiteProps = sectionProps("website,properties")// :: sectionProps("properties")
+  override lazy val websiteProps = sectionProps("website,properties")// :: sectionProps("properties")
 
   //todo fallback also in real time to rk, per prop
   // todo listen to updates and reload
-  lazy val props = sectionProps ("properties,website") //:: sectionProps("website")
+  override lazy val props = sectionProps ("properties,website") //:: sectionProps("website")
 
   /** the membership level of the owner (see if it's paid etc) */
   override def membershipLevel:Option[String] = {

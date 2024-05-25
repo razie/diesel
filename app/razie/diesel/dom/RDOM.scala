@@ -227,7 +227,7 @@ object RDOM {
     def asFloat: Float = value.toString.toFloat
 
     def asBoolean: Boolean = Try {
-      P.asBoolean(value.toString)
+      if(value.isInstanceOf[Boolean]) value.asInstanceOf[Boolean] else P.asBoolean(value.toString)
     }.getOrElse(false)
 
     def asDate: LocalDateTime = {

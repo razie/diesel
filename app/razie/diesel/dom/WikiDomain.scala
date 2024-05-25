@@ -62,6 +62,8 @@ trait WikiDomain {
     } else Nil
   }
 
+  def addRootIfMissing() : Unit
+
   /** the aggregated domain representation for this realm */
   def rdom: RDomain
 

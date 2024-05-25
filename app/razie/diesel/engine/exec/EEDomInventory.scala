@@ -146,7 +146,6 @@ class EEDomInventory extends EExecutor("diesel.inv") {
 
         def oneEntity(entity:P) = {
           val j = entity.value.get.asJson
-          val jo = razie.js.tojson(j)
 
           // we use the assetref, then key attribute then at last ask for a key input - avoids context junk
           val k =
@@ -164,6 +163,7 @@ class EEDomInventory extends EExecutor("diesel.inv") {
                 .getOrElse(new ObjectId().toString)
 
           val t = c.props.find(_.name == "table").map(_.calculatedValue(ECtx.empty)).getOrElse(c.name)
+          //          val jo = razie.js.tojson(j)
           //          val o = DomInventories.oFromJ("x", jo, c, t, Array[String]())
 
           val plugin = DomInventories.getPluginForClass(realm, c, conn)
@@ -261,7 +261,7 @@ class EEDomInventory extends EExecutor("diesel.inv") {
         }.getOrElse {
           // flatmap like behavior
           List(
-            EWarning("key missing!"),
+            (if(ctx.isStrict) EError("key missing!") else EWarning("key missing!")),
             EVal(P.undefined(Diesel.PAYLOAD))
           )
         }
@@ -271,12 +271,37 @@ class EEDomInventory extends EExecutor("diesel.inv") {
 
       case REMOVE => {
         val conn = ctx.get("connection").getOrElse("")
-        val cls = ctx.getRequired("className")
-        // todo remove by entity, extract class and key from it
-//        val entity = ctx.getRequired("className")
-        val k = ctx.get("key")
+        // remove by entity, extract class and key from it
+        val e = ctx.getp("entity")
+        var c:C = null // = dom.rdom.classes.getOrElse(cls, new C(cls))
 
-        val c = dom.rdom.classes.get(cls).getOrElse(new C(cls))
+        val (cls, k) = e.map { entity=>
+          val j = entity.value.get.asJson
+          // valid reson to overwrite className say for derivates and generic containers?
+          val clsn = ctx.get("className").getOrElse(entity.ttype.getClassName)
+          c = dom.rdom.classes.getOrElse(clsn, new C(clsn))
+
+        // we use the assetref, then key attribute then at last ask for a key input - avoids context junk
+        val k =
+          j.get("assetRef")
+              .filter(_.isInstanceOf[collection.Map[_, _]])
+              .map(_.asInstanceOf[collection.Map[String, Any]])
+              .flatMap(_.get("key"))
+              .orElse(
+                j.get(c.key)
+              )
+              .orElse(
+                ctx.get("key")
+              )
+              .map(_.toString)
+
+          (clsn,k)
+        }.getOrElse {
+          val clsn = ctx.getRequired("className")
+          c = dom.rdom.classes.getOrElse(clsn, new C(clsn))
+          (clsn, ctx.get("key"))
+        }
+
         val t = c.props.find(_.name == "table").map(_.calculatedValue(ECtx.empty)).getOrElse(c.name)
         val plugin = DomInventories.getPluginForClass(realm, c, conn)
 
@@ -308,7 +333,7 @@ class EEDomInventory extends EExecutor("diesel.inv") {
         }.getOrElse {
           // flatmap like behavior
           List(
-            EWarning("key missing!"),
+            (if(ctx.isStrict) EError("key missing!") else EWarning("key missing!")),
             EVal(P.undefined(Diesel.PAYLOAD))
           )
         }

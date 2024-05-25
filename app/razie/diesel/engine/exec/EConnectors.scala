@@ -76,7 +76,9 @@ object EEConnectors {
   }
 
   def get(realm: String, name: String) = {
-    _all.get(s"$realm-$name")
+    val a = _all.get(s"$realm-$name")
+    if("default" == name) a.orElse(_all.get(s"$realm-"))
+    else a
   }
 
   def remove(realm: String, name: String) = {

@@ -6,6 +6,9 @@
  */
 package razie.diesel.dom
 
+import razie.clog
+import razie.hosting.WikiReactors
+import razie.tconf.hosting.Reactors
 import razie.wiki.model._
 import scala.collection.mutable.ListBuffer
 
@@ -30,7 +33,11 @@ class WikiDomainImpl (val realm:String, val wi:WikiInst) extends WikiDomain {
     allPlugins
   }
 
+  /** the actual domain, reloadable */
   private var irdom: RDomain = null
+
+  /** the realms that were mixedin here... */
+  private var domainMixins: List[String] = Nil
 
   @volatile var isLoading: Boolean = false
 
@@ -38,15 +45,61 @@ class WikiDomainImpl (val realm:String, val wi:WikiInst) extends WikiDomain {
     if (irdom == null) {
       isLoading = true
 
+      // add wiki mixins first, then domain mixins, so they can be overriden in leaf
+      val realms = (Wikis(realm).mixins.l.map(_.realm) :::
+          WikiReactors
+              .getProperties(realm)
+              .getOrElse("domain.mixins", "")
+              .split(",")
+              .filter(_.nonEmpty)
+              .toList
+      ).distinct
+
+      clog << s"RDomain $realm loading mixins: $realms"
+
+      // todo kind'a sucks to reparse all again, but need to exclude topics marked private
+      val mixtopics = (realms flatMap (r=> WikiSearch.getList(r, "", "", WikiDomain.DOM_TAG_QUERY.tags))).filter(! _.tags.contains("private"))
+      val mytopics = WikiSearch.getList(realm, "", "", WikiDomain.DOM_TAG_QUERY.tags)
+      irdom = (mixtopics ::: mytopics)
+            .flatMap(p => WikiDomain.domFrom(p).toList)
+            .fold(createRDom) (_ plus _.revise)
+      //.addRoot  // can't add here, it will show up all the time in browsers etc
+
+      /**
       irdom =
           WikiSearch.getList(realm, "", "", WikiDomain.DOM_TAG_QUERY.tags)
               .flatMap(p => WikiDomain.domFrom(p).toList)
-              .fold(createRDom)(_ plus _.revise)
+              .fold {
+                // add wiki mixins first, then domain mixins, so they can be overriden in leaf
+                domainMixins = (
+                    Wikis(realm).mixins.l.map(_.realm) :::
+                    WikiReactors
+                        .getProperties(realm)
+                        .getOrElse("domain.mixins", "")
+                        .split(",")
+                        .filter(_.nonEmpty)
+                        .toList
+                    ).distinct
+
+                clog << s"RDomain $realm loading mixins: $domainMixins"
+
+                domainMixins
+                    .map (Wikis(_).domain.rdom)
+                    .fold(createRDom) (_ plus _.revise)
+              }(_ plus _.revise)
               //.addRoot  // can't add here, it will show up all the time in browsers etc
+*/
+      // do i need to revise every time or one time at the end?
 
       isLoading = false
     }
     irdom
+  }
+
+  override def addRootIfMissing(): Unit = synchronized {
+    if(! rdom.classes.contains("Domain")) {
+      irdom = rdom.addRoot
+    }
   }
 
   override def resetDom: Unit = synchronized {
@@ -58,7 +111,7 @@ class WikiDomainImpl (val realm:String, val wi:WikiInst) extends WikiDomain {
   override def isWikiCategory(cat: String): Boolean =
     rdom.classes.get(cat).exists(_.stereotypes.contains(WikiDomain.WIKI_CAT))
 
-  /** parse categories into domain model */
+  /** parse wiki categories into domain model - then you can add DSL constructs */
   override def createRDom : RDomain = {
     val diamonds = for (cat <- wi.categories if cat.contentProps.exists(t=>t._1.startsWith("diamond:"))) yield {
       val x = cat.contentProps.find(t=>t._1.startsWith("diamond"))

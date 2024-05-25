@@ -85,6 +85,9 @@ class DomainController extends RazController with Logging {
     val base = c.toList.flatMap(_.base)
     val path = if (ipath == "/") ipath + cat else ipath
 
+    val pl = if(plugin.trim.length > 0) plugin.trim else "-"
+    val co = if(conn.trim.length > 0) conn.trim else "-"
+
     /** context aware linking for the cat browser at the top
       *
       * @param s class to find
@@ -113,13 +116,13 @@ class DomainController extends RazController with Logging {
         // we're navigating backwards a many to one association
         s"/diesel/dom/query/$s/${as}/'${o.get.name}'?plugin=$plugin&conn=$conn"
       } getOrElse
-          routes.DomainController.catBrowser(plugin, conn, realm, s, newPath).toString()
+          routes.DomainController.catBrowser(pl, co, realm, s, newPath).toString()
     }
 
     ROK.r.withErrors(errors) apply  { implicit stok =>
       if (c.exists(_.stereotypes contains "wikiCategory"))
       // real wiki Category
-        views.html.modules.diesel.catBrowser(plugin, conn, realm, Wikis(realm).category(cat), cat, base, left, right)(
+        views.html.modules.diesel.catBrowser(pl, co, realm, Wikis(realm).category(cat), cat, base, left, right)(
           mkLink)
       else
       // parsed Class from domain
@@ -256,6 +259,31 @@ class DomainController extends RazController with Logging {
       }
   }
 
+  def domReset = RAction.withAuth {
+    implicit stok =>
+      try {
+        val realm = stok.realm
+        val dom = WikiDomain(realm)
+
+        dom.resetDom
+        dom.addRootIfMissing()
+
+        Redirect("/diesel/dom/browse")
+      }
+  }
+
+  def domBrowseRoot  (format:String="") = RAction.withAuth {
+    implicit stok =>
+      try {
+        val realm = stok.realm
+        val dom = WikiDomain(realm)
+
+        dom.addRootIfMissing()
+
+        Redirect("/diesel/dom/browse/Domain")
+      }
+  }
+
   def domBrowse  (cat:String, path:String="/", plugin:String="", conn:String="", format:String="") = RAction.withAuth {
     implicit stok =>
         try {
@@ -385,6 +413,8 @@ class DomainController extends RazController with Logging {
           NotFound(s"Inventory/plugin for realm $realm cat $cat not found")
 
         } else {
+
+          // DOM asset/objec
 
           val p = dom.findInventoriesForClass(c).head
           val ref = SpecRef.make(stok.realm, p.name, p.conn, cat, "")
