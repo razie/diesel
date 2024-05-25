@@ -390,7 +390,7 @@ object DomDocs extends Logging {
           }
         )),
 
-        "tags" -> List("generic")
+        "tags" -> List(we.map(_.name).mkString.replaceAllLiterally("-spec", ""))
       )
     }
   }
