@@ -730,7 +730,8 @@ class DomEngineV1 (
 
       // nothing matched ?
       // todo can't look at newNodes.isEmpty - some insert like TRACES etc - no decomp msg/vals
-      if(!mocked && !ruled /*newNodes.isEmpty*/) {
+      if(!mocked && !ruled /*newNodes.isEmpty*/
+      && !DO_THIS.equals(in.ea) && !DO_THAT.equals(in.ea)) {
         // change the nodes' color to warning and add an ignorable warning
         import EMsg._
         // todo this is bad because I change the message - is there impact to persistence of events and DomAsts ?
@@ -754,13 +755,11 @@ class DomEngineV1 (
   private def addNoRules(in:EMsg, n:EMsg,a:DomAst) = {
     // not for internal diesel messages - such as before/after/save etc
     val ms = n.entity + "." + n.met
-    if(ms.equals("do.this") || ms.equals("do.that")) {
+    if(ms.equals(DieselMsg.ENGINE.DO_THIS) || ms.equals(DieselMsg.ENGINE.DO_THAT)) {
       val m = s"${in.ea} is reserved for if/else"
       val cfg = this.pages.map(_.specRef.wpath).mkString("\n")
-      evAppChildren(a, DomAst(ETrace (m), AstKinds.DEBUG))
-
-      // in strict mode, blow up...
-      if(ctx.root.strict) throw new DieselExprException(m)
+      a.setKinds(AstKinds.TRACE)
+      evAppChildren(a, DomAst(ETrace (m), AstKinds.VERBOSE))
     }
     else if(!ms.startsWith("diesel.")) {
       val m = s"No rules, mocks or executors match for the above ${in.ea} with this signature - verify your arguments!"
@@ -1534,18 +1533,16 @@ class DomEngineV1 (
 
         val c = this.dom.classes.get(cn)
 
-        c.map {cls=>
+        val v = c.map {cls=>
           // todo caching of the json format per class?
-          val v = EVal(P.fromSmartTypedValue(Diesel.PAYLOAD, cls.toj))
-          evAppChildren(a, DomAst(v, AstKinds.TRACE))
-          setSmartValueInContext(a, this.ctx, v.p)
+          EVal(P.fromSmartTypedValue(Diesel.PAYLOAD, cls.toj))
         }.getOrElse {
           evAppChildren(a, DomAst(EWarning(s"Class not found in domain: $cn", cn)))
-
-          val v = EVal(P.undefined(Diesel.PAYLOAD))
-          evAppChildren(a, DomAst(v, AstKinds.TRACE))
-          setSmartValueInContext(a, ctx, v.p)
+          EVal(P.undefined(Diesel.PAYLOAD))
         }
+
+        evAppChildren(a, DomAst(v, AstKinds.TRACE))
+        setSmartValueInContext(a, ctx, v.p)
 
         true
 

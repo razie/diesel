@@ -135,7 +135,6 @@ object WikiSearch {
     //todo only filter if first is tag ?
     // array of array - first is AND second is OR
     val tagQuery = new TagQuery(curTags)
-    val qt = tagQuery.qt
 
     //todo optimize: run query straight in the database ?
     def filter (u:DBObject) = {

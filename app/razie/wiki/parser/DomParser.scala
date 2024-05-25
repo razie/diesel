@@ -269,13 +269,13 @@ trait DomParser extends ParserBase with ExprParser {
 
           case arrow ~ _ ~ cond ~ _ ~ _ ~ _ ~ gens => {
             val eif = EIfc(cond).withPosition(EPos("", arrow.pos.line, arrow.pos.column))
-            EMapCls("do", "this (level="+level+")", Nil, "=>", Option(eif), level)
+            EMapCls("do", "this", List(P.fromTypedValue("diesel.debug.level", level)), "=>", Option(eif), level)
                 .withPosition(EPos("", arrow.pos.line, arrow.pos.column)) ::
                 gens
           }
     }
 
-    /** new block-like if */
+    /** new block-like else */
   def pelse2tree (level:Int) : Parser[List[Object]] =
     ows ~> keyw("""[.$]?else""".r) ~
         ows ~ "{" ~ optComment3 ~
@@ -283,9 +283,9 @@ trait DomParser extends ParserBase with ExprParser {
         ows ~ "}" ^^ {
       case arrow ~ _ ~ _ ~ _ ~ gens => {
         val eif = EElse().withPosition(EPos("", arrow.pos.line, arrow.pos.column))
-        EMapCls("do", "that (level="+level+")", Nil, "=>", Option(eif), level)
+        EMapCls("do", "that", List(P.fromTypedValue("diesel.debug.level", level)), "=>", Option(eif), level)
             .withPosition(EPos("", arrow.pos.line, arrow.pos.column)) ::
-        gens
+            gens
       }
     }
 

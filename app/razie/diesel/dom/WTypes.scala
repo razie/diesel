@@ -267,6 +267,9 @@ case class WType (name:String, schema:String = WTypes.UNKNOWN, mime:Option[Strin
   def isNumber = WTypes.NUMBER == name || WTypes.FLOAT == name || WTypes.INT == name
   def isArray = WTypes.ARRAY == name
   def isJson = WTypes.JSON == name || WTypes.OBJECT == name
+  def isStream = WTypes.OBJECT == name && "DieselStream" == schema
+
+  def isSubtypeOf (subtype: WType) = WTypes.isSubtypeOf (this, subtype)
 
   def nonEmpty = name.nonEmpty
 }
