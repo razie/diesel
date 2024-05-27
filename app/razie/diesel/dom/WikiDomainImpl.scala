@@ -45,6 +45,15 @@ class WikiDomainImpl (val realm:String, val wi:WikiInst) extends WikiDomain {
     if (irdom == null) {
       isLoading = true
 
+      loadDomain()
+
+      isLoading = false
+    }
+    irdom
+  }
+
+  /** make sure to call this from a synchronized block */
+  private def loadDomain(): Unit = {
       // add wiki mixins first, then domain mixins, so they can be overriden in leaf
       val realms = (Wikis(realm).mixins.l.map(_.realm) :::
           WikiReactors
@@ -59,11 +68,16 @@ class WikiDomainImpl (val realm:String, val wi:WikiInst) extends WikiDomain {
 
       // todo kind'a sucks to reparse all again, but need to exclude topics marked private
       val mixtopics = (realms flatMap (r=> WikiSearch.getList(r, "", "", WikiDomain.DOM_TAG_QUERY.tags))).filter(! _.tags.contains("private"))
+
       val mytopics = WikiSearch.getList(realm, "", "", WikiDomain.DOM_TAG_QUERY.tags)
       irdom = (mixtopics ::: mytopics)
             .flatMap(p => WikiDomain.domFrom(p).toList)
             .fold(createRDom) (_ plus _.revise)
+
       //.addRoot  // can't add here, it will show up all the time in browsers etc
+
+   // but we should... /
+    addRootIfMissing()
 
       /**
       irdom =
@@ -90,10 +104,6 @@ class WikiDomainImpl (val realm:String, val wi:WikiInst) extends WikiDomain {
               //.addRoot  // can't add here, it will show up all the time in browsers etc
 */
       // do i need to revise every time or one time at the end?
-
-      isLoading = false
-    }
-    irdom
   }
 
   override def addRootIfMissing(): Unit = synchronized {

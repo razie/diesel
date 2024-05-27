@@ -38,6 +38,9 @@ object DomGuardian extends Logging {
   // (realm, label, tag query, "")
   val tagList = new ListBuffer[(String, String, String, String)]()
 
+  // (realm, tag) - tags to skip, will add to list of ignore when running sanity etc
+  val skipTagList = new ListBuffer[(String, String)]()
+
   // todo optimize so we don't parse every time
   def autoRealms =
     Services.config.weprop("diesel.guardian.auto.realms.regex", "wiki|specs|devnetlinq")

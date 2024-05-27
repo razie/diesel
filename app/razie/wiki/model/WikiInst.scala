@@ -111,6 +111,7 @@ trait WikiInst extends DSpecInventory {
   def categories : Iterable[razie.wiki.model.WikiEntry]
   def category(cat: String) : Option[WikiEntry]
 
+  /** todo what's this do? */
   def refreshCat (we:WikiEntry): Unit
 
   final val VISIBILITY = "visibility"

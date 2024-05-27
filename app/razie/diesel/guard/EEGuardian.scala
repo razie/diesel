@@ -205,6 +205,18 @@ class EEGuardian extends EExecutor(DieselMsg.GUARDIAN.ENTITY) with Logging {
         res += EVal(P("payload", DomGuardian.stats))
       }
 
+      case "skipTags" => {
+        val r = ctx.getRequired("realm")
+        val n = ctx.getRequired("tags")
+
+        n.split(",").foreach(x =>
+          removeSkipTags(r,x)
+              .append((r,x))
+        )
+
+        res += EVal(P.of("payload", DomGuardian.skipTagList.filter(_._1 == r).map(_._2)))
+      }
+
       case "addTag" => {
         val r = ctx.getRequired("realm")
         val n = ctx.getRequired("name")
@@ -241,13 +253,24 @@ class EEGuardian extends EExecutor(DieselMsg.GUARDIAN.ENTITY) with Logging {
       // result lower below
     }
 
-   def removeTags(realm:String, name:String) = {
-     DomGuardian.tagList
+    /** remove a tag from the current tag list */
+    def removeTags(realm:String, name:String) = {
+      DomGuardian.tagList
+          .zipWithIndex
+          .find(p => p._1._1 == realm && p._1._2 == name)
+          .map(_._2)
+          .foreach(DomGuardian.tagList.remove)
+      DomGuardian.tagList
+    }
+
+    /** remove a tag from the current tag list */
+   def removeSkipTags(realm:String, name:String) = {
+     DomGuardian.skipTagList
          .zipWithIndex
          .find(p => p._1._1 == realm && p._1._2 == name)
          .map(_._2)
-         .foreach(DomGuardian.tagList.remove)
-     DomGuardian.tagList
+         .foreach(DomGuardian.skipTagList.remove)
+     DomGuardian.skipTagList
    }
 
     res.toList

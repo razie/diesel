@@ -70,6 +70,7 @@ trait WikiDomain {
   /* while loading, it may recursively try to do some stuff - */
   def isLoading: Boolean
 
+  /** reload the dom from config/wikis */
   def resetDom: Unit
 
   /** is this an actual wiki category or a user-defined class or imported concept? */

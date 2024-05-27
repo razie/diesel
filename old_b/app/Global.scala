@@ -100,7 +100,7 @@ object Global extends WithFilters(LoggingFilter) {
   def isShouldDebug(path: String) =
     !path.startsWith("/assets/") &&
         !path.startsWith("/razadmin/ping/shouldReload") &&
-        !path.startsWith("/diesel/status")
+        !path.startsWith("/diesel/guard/status")
 
   /** intercepting routing of requests to see about forwards and proxies */
   override def onRouteRequest(request: RequestHeader): Option[Handler] = {
@@ -336,7 +336,7 @@ object LoggingFilter extends Filter {
     val apiRequest = DieselRateLimiter.isApiRequest(rh.uri)
     val isAsset = rh.uri.startsWith("/assets/") || rh.uri.startsWith("/favicon")
 
-    if (!rh.uri.contains("/ping/shouldReload") && !rh.uri.startsWith("/diesel/status")) {
+    if (!rh.uri.contains("/ping/shouldReload") && !rh.uri.startsWith("/diesel/guard/status")) {
       clog << s"LF.START ${rh.method} ${rh.host} ${rh.uri}"
     }
 
@@ -374,7 +374,7 @@ object LoggingFilter extends Filter {
 
       val rates = served
 
-      if (!isFromRobot(rh) && !rh.uri.contains("razadmin/ping/shouldReload") && !rh.uri.startsWith("/diesel/status")) {
+      if (!isFromRobot(rh) && !rh.uri.contains("razadmin/ping/shouldReload") && !rh.uri.startsWith("/diesel/guard/status")) {
         clog << s"LF.STOP.$what ${rh.method} ${rh.host}${rh.uri} took ${time}ms and returned ${result.header.status} $rates"
       }
 

@@ -7,11 +7,11 @@
 package razie.wiki.model
 
 import com.mongodb.casbah.Imports._
+import mod.diesel.model.Diesel
 import razie.base.data.TripleIdx
 import razie.diesel.dom.WikiDomain
 import razie.wiki.Services
 import razie.wiki.admin.GlobalData
-
 import scala.collection.mutable.{HashMap, ListBuffer}
 
 /**
@@ -86,7 +86,7 @@ class WikiIndex (val realm:String, val fallBacks : List[WikiIndex]) {
     if (we.category == "Category") {
       Wikis(realm).refreshCat(we)
       WikiDomain(realm).resetDom
-    } else if (we.category == "DslDomain" || WikiDomain.DOM_TAGS_ARR.exists(we.tags.contains) ) {
+    } else if (we.category == Diesel.CAT_DOMAIN || WikiDomain.DOM_TAGS_ARR.exists(we.tags.contains) ) {
       WikiDomain(realm).resetDom
     } else if (we.category == "Tag") {
       Wikis(realm).tags.put(we.name, we )

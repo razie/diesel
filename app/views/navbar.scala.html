@@ -402,6 +402,10 @@ require(['jquery'], function($){
     ====================== for admins and devs, guardian menu
 
     **@
+@skipTags() = @{
+      val x = DomGuardian.skipTagList.filter(_._1 == realm).map(_._2).mkString("%2F")
+    if(x.trim.isEmpty) "" else ("%2F" + x)
+    }
 
     @if(! web().navrMenuRemove.contains("Search") || stok.au.exists(_.isDev) ) {
       @if((stok.au.exists(_.isDev))) {
@@ -419,8 +423,8 @@ require(['jquery'], function($){
               <li><a href="#">Guardian<span class="caret"></span></a>
                 <ul class="dropdown-menu sub-menu">
                   <li><a href="/diesel/guard/report">Test Report</a></li>
-                  <li><a href="/diesel/guard/runCheck?tq=story%2Fsanity%2F-skip%2F-manual">Run test (Sanity)</a></li>
-                  <li><a href="/diesel/guard/runCheck?tq=story%2F-skip%2F-manual">Run test (All)</a></li>
+                  <li><a href="/diesel/guard/runCheck?tq=story%2Fsanity%2F-skip%2F-manual@skipTags()">Run test (Sanity)</a></li>
+                  <li><a href="/diesel/guard/runCheck?tq=story%2F-skip%2F-manual@skipTags()">Run test (All)</a></li>
                   <li class="divider"></li>
                   @DomGuardian.tagList.filter(_._1 == realm).map{x=>
                     <li><a href="/diesel/guard/runCheck?tq=@Enc.toUrl(x._3)">Run test (@x._2)</a></li>
