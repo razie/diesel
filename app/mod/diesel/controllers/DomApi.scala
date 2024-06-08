@@ -155,6 +155,7 @@ class DomApi extends DomApiBase with Logging {
 
       val ret = if ("value" == resultMode) {
         Ok("")
+            .withHeaders("Access-Control-Allow-Origin" -> "*")
       } else {
         // multiple values as json
         val m = Map(
@@ -331,6 +332,7 @@ class DomApi extends DomApiBase with Logging {
             DomEngineSettings.DIESEL_HOST -> engine.settings.dieselHost.mkString,
             DomEngineSettings.DIESEL_NODE_ID -> engine.settings.node
           )
+              .withHeaders("Access-Control-Allow-Origin" -> "*")
 
           engine.addResponseInfo(ok.header.status, body, ok.header.headers)
 
@@ -641,6 +643,7 @@ class DomApi extends DomApiBase with Logging {
             DomEngineSettings.DIESEL_HOST -> engine.settings.dieselHost.mkString,
             DomEngineSettings.DIESEL_NODE_ID -> engine.settings.node
           )
+              .withHeaders("Access-Control-Allow-Origin" -> "*")
 
           engine.addResponseInfo(ok.header.status, body, ok.header.headers)
 
@@ -693,6 +696,7 @@ class DomApi extends DomApiBase with Logging {
         new Status(code.toInt)
             .apply("client requested code: " + code)
             .withHeaders("diesel-reason" -> s"client requested dieselHttpResponse $code in realm ${stok.realm}")
+            .withHeaders("Access-Control-Allow-Origin" -> "*")
       }.getOrElse {
 
         var t1Start = System.currentTimeMillis()
@@ -1141,6 +1145,7 @@ class DomApi extends DomApiBase with Logging {
               }
             }
             engRes.get
+                .withHeaders("Access-Control-Allow-Origin" -> "*")
           } getOrElse {
             val msg = (s"ERR Realm(${reactor}): Template or message not found for path: " + path)
             engine.withReturned(msg, 404)
@@ -1312,12 +1317,60 @@ class DomApi extends DomApiBase with Logging {
    // diesel. not permitted without some form of auth
     if (!stok.au.exists(_.isActive) && ea.startsWith("diesel.") && ea != "diesel.ping") {
       Future.successful(
-        unauthorized ("Can't start this message without an active account...")
+        Unauthorized("""<span style="color:red;font-weight:bold;">n/a</span>""")
+            .withHeaders("dieselReason" -> "Not authorized!")
+            .withHeaders("Access-Control-Allow-Origin" -> "*")
       )
     } else {
       irunDom(ea, None)
     }
   }
+
+  /** run a script - only for active users */
+
+  def dieselEngineScript = Action(parse.raw).async { request =>
+    implicit val stok = razRequest(request)
+
+    val raw = request.body.asBytes()
+    // RAZ play 2.6 val body = raw.map(a => new String(a.asByteBuffer.array())).getOrElse("")
+    val body = raw.map(a => new String(a.toArray)).getOrElse("")
+    val postedContent = Some(new EContent(
+      body,
+      stok.req.contentType.mkString,
+      200,
+      Map.empty,
+      None,
+//          raw.map(_.asByteBuffer.array())))
+      raw.map(_.toArray)))
+
+    if (stok.au.exists(_.isActive)) {
+      if(body.length > 0) {
+        val m = if(body startsWith "$") body else "$msg " + body
+        val strMsg = DieselMsgString(
+          m,
+          DieselTarget.ENV(stok.realm),
+          Map.empty
+        )
+
+        irunDomStr(strMsg)
+      } else {
+        Future.successful(
+          Ok(
+            razie.js.tojsons(
+              Map("status" -> "done.failed", "msg" -> "Can't run this sc", "script" -> body)
+            )).as("application/json")
+              .withHeaders("Access-Control-Allow-Origin" -> "*")
+        )
+      }
+    } else {
+      Future.successful(
+        Unauthorized("""<span style="color:red;font-weight:bold;">hard skills</span>""")
+        .withHeaders("dieselReason" -> "Not localhost or not authorized!")
+            .withHeaders("Access-Control-Allow-Origin" -> "*")
+      )
+    }
+  }
+
 
   /** /diesel/proxy/path   proxy real service GET */
   def proxy(ipath: String) = Filter(noRobots) { implicit stok =>
@@ -1992,7 +2045,7 @@ class DomApi extends DomApiBase with Logging {
     Future.successful(Redirect("/", SEE_OTHER))
   }
 
-  /** todo this will parse all specs to find the object and link to it... OPTIMIZE ?? */
+  /** todo this will parse all specs to find the message and link to it... OPTIMIZE ?? */
   def msg (ea:String) = RAction.async { implicit stok =>
       // todo use drafts??
     val d = catPages("Spec", stok.realm)

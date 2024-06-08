@@ -161,7 +161,8 @@ abstract class WikiConfig {
   /** admin email */
   final val adminEmail = prop("wiki.adminEmail", "razie@razie.com")
 
-  // when running on localhost, some functionality is enabled as opposed to running in cloud hosting mode
+  /** when running on localhost, some functionality is enabled as opposed to running in cloud hosting mode.
+    * localhost is either a docker or a dev instance */
   def isLocalhost = hostport startsWith "localhost:"
 
   /** in dev mode, certain things are permitted... not every localhost is dev mode */

@@ -260,7 +260,7 @@ case class WikiEntry(
     if(!isDraft || !newVer.isDraft) WikiEntryOld(this, reason.orElse(Some("WikiEntry.update"))).create
 
     // force unix style - some patterns go weird with \r
-    val safeVer = newVer.copy(content = newVer.content.replaceAll("\r", ""))
+    val safeVer = newVer.copy(content = newVer.content.replaceAll("\r", ""), updDtm = DateTime.now)
 
     RUpdate.noAudit[WikiEntry](Wikis(realm).weTables(wid.cat), Map("_id" -> newVer._id), safeVer)
 

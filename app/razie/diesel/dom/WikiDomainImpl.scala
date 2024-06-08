@@ -23,7 +23,7 @@ class WikiDomainImpl (val realm:String, val wi:WikiInst) extends WikiDomain {
   //
   lazy val _allPlugins = new ListBuffer[DomInventory]().++=:(
     DieselRulesInventory.PREDEF_INVENTORIES :::
-    DomInventories.pluginFactories.flatMap(x => x.mkInstance(realm, "", wi, x.name))
+        DomInventories.pluginFactories.flatMap(x => x.mkInstance(realm, "", wi, x.name))
   )
 
   override def allPlugins = _allPlugins.toList
@@ -34,20 +34,22 @@ class WikiDomainImpl (val realm:String, val wi:WikiInst) extends WikiDomain {
   }
 
   /** the actual domain, reloadable */
-  private var irdom: RDomain = null
+  @volatile private var irdom: RDomain = null
 
   /** the realms that were mixedin here... */
   private var domainMixins: List[String] = Nil
 
   @volatile var isLoading: Boolean = false
 
-  override def rdom: RDomain = synchronized {
-    if (irdom == null) {
-      isLoading = true
+  override def rdom: RDomain = {
+    if (irdom == null) wi.index.synchronized {
+      if (irdom == null) {
+        isLoading = true
 
-      loadDomain()
+        loadDomain()
 
-      isLoading = false
+        isLoading = false
+      }
     }
     irdom
   }
@@ -106,13 +108,13 @@ class WikiDomainImpl (val realm:String, val wi:WikiInst) extends WikiDomain {
       // do i need to revise every time or one time at the end?
   }
 
-  override def addRootIfMissing(): Unit = synchronized {
+  override def addRootIfMissing(): Unit = wi.index.synchronized {
     if(! rdom.classes.contains("Domain")) {
       irdom = rdom.addRoot
     }
   }
 
-  override def resetDom: Unit = synchronized {
+  override def resetDom: Unit = wi.index.synchronized {
     irdom = null
   }
 

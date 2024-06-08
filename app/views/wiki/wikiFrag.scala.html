@@ -8,6 +8,8 @@ wiki fragment, used in another page
 @import razie.diesel.dom.WikiDomain
 @import razie.tconf.Visibility
 
+@util.oneModal()
+
 @nicename() = @{ iname.getOrElse(wid.name) }
 @rss = @{page.flatMap(_.contentProps.get("rss")).getOrElse(controllers.WikiUtil.w(wid)+"/rss.xml")}
 
@@ -210,13 +212,11 @@ function selectTextareaLine(tarea,lineNum) {
                 </span>
               @** } **@
 
-              @if(!(Seq("WikiLink", "Form").contains(wid.cat) ||
-                  page.exists(_.contentProps.contains("noSocial")))) {
-                <br>
+              @if( ! (Seq("WikiLink", "Form").contains(wid.cat) || page.exists(_.contentProps.contains("noSocial")))) {
                 @if(stok._showSocial) {
-                  <div class="addthis_inline_share_toolbox" style="display: inline-block"></div>
-                  @*<a class="btn btn-xs btn-info" href="@routes.Wiki.social(label().toString, url())">Share <span class="glyphicon glyphicon-thumbs-up icon-white"></span></a>*@
+                  <a class="btn btn-xs btn-info" href="@routes.Wiki.social(label(), url())">Share <span class="glyphicon glyphicon-thumbs-up icon-white"></span></a>
                 }
+                <br>
 
                 @if(Seq("Blog", "Forum").contains(wid.cat)) {
                   <a class="btn btn-spanxs btn-info" href="@rss">Feed (RSS) <span class="glyphicon glyphicon-star icon-white"></span></a>

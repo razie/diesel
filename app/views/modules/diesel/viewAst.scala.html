@@ -118,9 +118,8 @@ view an engine
 
 @eng.map{ e=>
   @if(!DomState.isDone(e.status)) {
-    In progress... @e.progress
-    <span class="label label-danger"
-    >
+    In progress... <span class="label label-primary">@e.progress</span>
+    <span class="label label-danger">
      <span
        id="cancel"
      class="glyphicon glyphicon-remove"

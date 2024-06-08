@@ -56,7 +56,8 @@ trait WikiParserT extends WikiParserMini with CsvParser {
     wikiPropLoc | wikiPropRoles | wikiPropAttrs | wikiPropAttr | wikiPropWidgets | wikiPropCsv | wikiPropCsv2 |
     wikiPropTable | wikiPropSection | wikiPropHtml | wikiPropImg | wikiPropVideo | wikiPropQuery |
     wikiPropCode | wikiPropField | wikiPropRk | wikiPropFeedRss | wikiPropTag | wikiPropExprS |
-    wikiPropRed | wikiPropAlert | wikiPropLater | wikiPropHeading | wikiPropFootref | wikiPropFootnote |
+    wikiPropRed | wikiPropAlert | wikiPropMsgLater | wikiPropLater | wikiPropHeading |
+        wikiPropFootref | wikiPropFootnote |
     wikiPropIf | wikiPropJs | wikiPropVisible | wikiPropUserlist
     )((x,y) => x | y) | wikiProp
 
@@ -114,6 +115,7 @@ trait WikiParserT extends WikiParserMini with CsvParser {
     case place => StrAstNode("""{{at %s}}""".format(place), Map("venue" -> place), ILink(WID("Venue", place), place) :: Nil)
   }
 
+  /** locations */
   private def wikiPropLoc: PS = "{{" ~> "loc" ~> """[: ]""".r ~> """[^}:]*""".r ~ ":".r ~ """[^}]*""".r <~ "}}" ^^ {
     case what ~ _ ~ loc => {
       if ("ll" == what)
@@ -127,6 +129,7 @@ trait WikiParserT extends WikiParserMini with CsvParser {
     }
   }
 
+  /** locations */
   private def wikiPropLocName: PS = "{{" ~> "loc" ~> """[: ]""".r ~> """[^:]*""".r ~ ":".r ~ """[^}]*""".r <~ "}}" ^^ {
     case what ~ _ ~ loc => {
       StrAstNode("""{{at:%s:%s)}}""".format(what, loc), Map("loc:" + what -> loc))
@@ -181,6 +184,7 @@ trait WikiParserT extends WikiParserMini with CsvParser {
     }
   }
 
+  /** association between Categories */
   private def wikiPropRoles: PS = "{{roles" ~> """[: ]+""".r ~> """[^:]*""".r ~ "[: ]+".r ~ """[^}]*""".r <~ "}}" ^^ {
     case cat ~ _ ~ how => {
       val r = if(Wikis.RK == realm) "Category" else realm+".Category"
@@ -248,6 +252,15 @@ trait WikiParserT extends WikiParserMini with CsvParser {
 
   private def wikiPropRed: PS = "{{" ~> "red" ~> opt("[: ]".r ~> """[^}]*""".r) <~ "}}" ^^ {
     case what => StrAstNode(s"""<span style="color:red;font-weight:bold;">${what.mkString}</span>""")
+  }
+
+  /** msg spanID e.a(p...)
+    * msg.html msg.text
+    */
+  private def wikiPropMsgLater: PS = "{{" ~> "msg" ~> opt("""\.html|\.text""".r) ~ " +".r ~ """[^ :]*""".r ~ " +".r ~ """[^}]*""".r <~ "}}" ^^ {
+        // todo support with parameters
+    case func ~ _ ~ id ~ _ ~ msgExpr =>
+      StrAstNode(Wikis.propPostLater(id, s"/diesel/engine/script", msgExpr, func.map(_.substring(1)).getOrElse("text")))
   }
 
   private def wikiPropLater: PS = "{{" ~> "later" ~> "[: ]".r ~> """[^ :]*""".r ~ "[: ]".r ~ """[^}]*""".r <~ "}}" ^^ {

@@ -46,7 +46,7 @@ class EEDomInventory extends EExecutor("diesel.inv") {
     val dom = WikiDomain(realm)
 
     def warnPlugin (plugin:Option[DomInventory], cls:String, conn:String) =
-      if(plugin.isEmpty) List(EWarning(s"No inventory found for class: $realm.$cls - $conn")) else Nil
+      if(plugin.isEmpty) List(EWarning(s"No inventory found for class: $realm.$cls - $conn | is it defined in a saved DslDomain spec?")) else Nil
 
     in.ea match {
 

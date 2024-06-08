@@ -437,6 +437,13 @@ object Wikis extends Logging with Validation {
 
 
   /** html for later */
+  def propPostLater (id:String, url:String, body:String, func:String) =
+    s"""<script async>require(['jquery'],function($$){
+       |$$.post('$url', '$body', function( data ) {
+       |  $$('#$id').$func(typeof data == 'object' ? JSON.stringify(data) : data);
+       |  });
+       |});</script>""".stripMargin
+
   def propLater (id:String, url:String) =
     s"""<script async>require(['jquery'],function($$){$$("#$id").load("$url");});</script>"""
 

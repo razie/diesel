@@ -3,6 +3,7 @@ included in wikiListAssets - just the actual list, nothing else
 **************@
 @import razie.tconf.FullSpecRef
 @import razie.diesel.dom.DIQueryResult
+@import razie.diesel.dom.DieselAsset
 @(search:String, realm:String, curTags:String, pages:DIQueryResult, fieldsToShow:Array[String], showRealm:Boolean = false)(implicit stok: controllers.StateOk)
 @import razie.wiki.model._
 
@@ -14,7 +15,11 @@ included in wikiListAssets - just the actual list, nothing else
   }
 }
 
-@label(s:String, wid:WID) = @{if(s.isEmpty) wid.name else s}
+@getp(p:DieselAsset[_], name:String) = @{p.valueO.get.parms.find(_.name == name).map(_.currentStringValue).mkString}
+
+@sor(s:String, s2: =>String) = @{if(s == null || s.isEmpty) s2 else s}
+
+@label(s:String, wid: =>WID) = @{if(s == null || s.isEmpty) wid else s}
 
 <table id="wlist" class="table table-condensed">
   <thead>
@@ -39,7 +44,7 @@ included in wikiListAssets - just the actual list, nothing else
         <td><small><small>@p.ref.realm</small></small></td>
       }
     <td>
-      <a href="@razie.diesel.dom.DieselAssets.mkLinkAsset(p.ref.asInstanceOf[FullSpecRef], "")">@label(p.ref.key, p.ref)</a>
+      <a href="@razie.diesel.dom.DieselAssets.mkLinkAsset(p.ref.asInstanceOf[FullSpecRef], "")">@label(sor(getp(p, "name"), p.ref.key), p.ref)</a>
     </td>
     @fieldsToShow.filter(x=> !x.equals("name") && !x.startsWith("-")).map { f =>
       <td>

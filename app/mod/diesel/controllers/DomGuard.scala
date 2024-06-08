@@ -494,11 +494,11 @@ class DomGuard extends DomApiBase with Logging {
   }
 
   /** status badge for current realm */
-  def dieselStatus = RAction.async { implicit stok =>
+  def dieselGuardStatus = RAction.async { implicit stok =>
     stok.au.map { au =>
       DomGuardian.findLastRun(stok.realm, au.userName).map { r =>
         Future.successful {
-          Ok(quickBadge(r.failed, r.total, r.duration))
+          Ok(quickBadge(r.failed, r.total, r.duration)).withHeaders("Access-Control-Allow-Origin" -> "*")
         }
       }.getOrElse {
         // start a check in the background
@@ -507,12 +507,12 @@ class DomGuard extends DomApiBase with Logging {
 
         // just return right away
         Future.successful {
-          Ok(quickBadge(-1, -1, -1, ""))
+          Ok(quickBadge(-1, -1, -1, "")).withHeaders("Access-Control-Allow-Origin" -> "*")
         }
       }
     }.getOrElse {
       Future.successful {
-        Ok("") // todo when no user, don't call this
+        Ok("").withHeaders("Access-Control-Allow-Origin" -> "*") // todo when no user, don't call this
       }
     }
   }
@@ -522,7 +522,7 @@ class DomGuard extends DomApiBase with Logging {
     stok.au.map { au =>
       DomGuardian.findLastRun(stok.realm, au.userName).map { r =>
         Future.successful {
-          Ok(quickBadge(r.failed, r.total, r.duration))
+          Ok(quickBadge(r.failed, r.total, r.duration)).withHeaders("Access-Control-Allow-Origin" -> "*")
         }
       }.getOrElse {
         // start a check in the background
@@ -531,12 +531,12 @@ class DomGuard extends DomApiBase with Logging {
 
         // just return right away
         Future.successful {
-          Ok(quickBadge(-1, -1, -1, ""))
+          Ok(quickBadge(-1, -1, -1, "")).withHeaders("Access-Control-Allow-Origin" -> "*")
         }
       }
     }.getOrElse {
       Future.successful {
-        Ok("") // todo when no user, don't call this
+        Ok("").withHeaders("Access-Control-Allow-Origin" -> "*") // todo when no user, don't call this
       }
     }
   }
@@ -597,7 +597,7 @@ class DomGuard extends DomApiBase with Logging {
   }
 
   /** status badge for all realms */
-  def dieselStatusAll = Filter(activeUser).async { implicit stok =>
+  def dieselGuardStatusAll = Filter(activeUser).async { implicit stok =>
     val t = (0, 0, 0L)
 
     val x = DomGuardian.lastRuns.values.map { r =>
@@ -605,7 +605,7 @@ class DomGuard extends DomApiBase with Logging {
     }.foldLeft(t)((a, b) => (a._1 + b._1, a._2 + b._2, a._3 + b._3))
 
     Future.successful {
-      Ok(quickBadge(x._1, x._2, x._3, "All"))
+      Ok(quickBadge(x._1, x._2, x._3, "All")).withHeaders("Access-Control-Allow-Origin" -> "*")
     }
   }
 

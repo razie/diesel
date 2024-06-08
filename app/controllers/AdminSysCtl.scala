@@ -49,11 +49,11 @@ class AdminSysCtl @Inject() (notesCtl:NotesLocker) extends AdminBase {
     what match {
 //      case "script1" => Ok(WikiScripster.impl.runScript("1+2", "js", None, None, Map()))
       case "shouldReload" => {
-        Ok(reloadt.toString).as("application/text")
+        Ok(reloadt.toString).as("application/text").withHeaders("Access-Control-Allow-Origin" -> "*")
       }
 
       case "buildTimestamp" => {
-        Ok(reloadt.toString).as("application/text")
+        Ok(reloadt.toString).as("application/text").withHeaders("Access-Control-Allow-Origin" -> "*")
       }
 
       case "timeout.please" => {
@@ -68,10 +68,10 @@ class AdminSysCtl @Inject() (notesCtl:NotesLocker) extends AdminBase {
       }
 
       case x: String if x.forall(_.isDigit) => {
-        Status(x.toInt).apply("as asked")
+        Status(x.toInt).apply("as asked").withHeaders("Access-Control-Allow-Origin" -> "*")
       }
 
-      case _ => Ok(osusage).as("application/json")
+      case _ => Ok(osusage).as("application/json").withHeaders("Access-Control-Allow-Origin" -> "*")
     }
   }
 
