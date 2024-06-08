@@ -521,8 +521,15 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
         }
       }
 
-      case ">>>" | ">>" | "<<" | "<<<" => {
-        streamOp (op, v)
+      case ">>>" | ">>" => {
+        val bv = b.applyTyped(v) // evaluate the stream
+        AExpr2Utils.streamOp (op, v, av, b, bv, bv, expr)
+      }
+
+      case "<<" | "<<<" => {
+        val bv = b.applyTyped(v) // evaluate the stream
+        AExpr2Utils.streamOp (op, v, av, b, bv, av, expr)
+      }
 
       case "|c" | "|>" => {
         AExpr2Utils.pipeOp (op, v, av, b, expr)
