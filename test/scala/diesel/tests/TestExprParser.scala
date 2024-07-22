@@ -8,7 +8,6 @@ package tests
 import akka.actor.ActorSystem
 import akka.util.Helpers.Requiring
 import com.typesafe.config.ConfigFactory
-import org.scalatest.Matchers.noException.should
 import org.scalatest.{MustMatchers, OptionValues, WordSpecLike}
 import razie.diesel.dom.WTypes
 import razie.diesel.engine.nodes.StoryNode
