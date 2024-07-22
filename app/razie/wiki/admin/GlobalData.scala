@@ -17,6 +17,7 @@ import razie.diesel.utils.DomCollector
 import razie.hosting.WikiReactors
 import razie.wiki.{Config, Services}
 import razie.wiki.model.WikiCache
+import scala.collection.mutable.{LinkedHashMap, TreeMap}
 import scala.concurrent.{Future, Promise}
 
 /** simple stats encapsulated */
@@ -95,61 +96,44 @@ object GlobalData {
   /** wait here if you need reactors */
   def reactorsLoadedF: Future[Boolean] = reactorsLoadedP.future
 
-  def toMap() = {
-    Map(
-      "global" -> Map(
+  def toMap(): LinkedHashMap[String, Any] = {
+    LinkedHashMap(
+      "global" -> LinkedHashMap(
         "maxDefaultThreads" -> Services.config.prop("akka.actor.default-dispatcher.thread-pool-executor.fixed-pool-size"),
         "maxDieselThreads" -> Services.config.prop("diesel-dispatcher.thread-pool-executor.fixed-pool-size"),
         "serving" -> GlobalData.serving.get(),
         "served" -> GlobalData.served.get(),
-        "wikiCacheMisses" -> GlobalData.wikiCacheMisses.get(),
-        "wikiCacheSets" -> GlobalData.wikiCacheSets.get(),
-        "wikiCacheHits" -> GlobalData.wikiCacheHits.get(),
+        "maxServing" -> GlobalData.maxServing.get(),
+        "maxServingApiRequests" -> GlobalData.maxServingApiRequests.get(),
         "servingApiRequests" -> GlobalData.servingApiRequests.get(),
         "servedApiRequests" -> GlobalData.servedApiRequests.get(),
         "limitedRequests" -> GlobalData.limitedRequests.get(),
-        "maxServing" -> GlobalData.maxServing.get(),
-        "maxServingApiRequests" -> GlobalData.maxServingApiRequests.get(),
         "dieselEnginesTotal" -> GlobalData.dieselEnginesTotal.get(),
         "dieselEnginesActive" -> GlobalData.dieselEnginesActive.get(),
+        "wikiCacheMisses" -> GlobalData.wikiCacheMisses.get(),
+        "wikiCacheSets" -> GlobalData.wikiCacheSets.get(),
+        "wikiCacheHits" -> GlobalData.wikiCacheHits.get(),
         "servedPages" -> GlobalData.servedRequests.get(),
         "runningFor" -> ISOPeriodFormat.alternateExtended.print(new Duration(GlobalData.startedDtm, DateTime.now).toPeriod),
         "startedDtm" -> GlobalData.startedDtm,
         "sendEmailCurCount" -> SendEmail.curCount,
         "sendEmailState" -> SendEmail.state
     ),
-    "diesel" -> Map(
-      "allReactors" -> WikiReactors.allReactors.keys.mkString(","),
-      "loadedReactors" -> WikiReactors.reactors.keys.mkString(","),
-      "wikiCount" -> RazMongo("WikiEntry").size,
-      "wikiOptions" -> GlobalData.wikiOptions,
-
-      "collectedAst" -> DomCollector.withAsts(_.size),
+    "diesel" -> LinkedHashMap(
       "activeEngines" -> DieselAppContext.activeEngines.size,
       "activeActors" -> DieselAppContext.activeActors.size,
       "activeStreams" -> DieselAppContext.activeStreams.size,
       "activeCrons" -> GlobalData.dieselCronsActive.get(),
       "maxActiveEngines" -> GlobalData.dieselEnginesActive.max(),
       "maxActiveStreams" -> GlobalData.dieselStreamsActive.max(),
-      "maxActiveCrons" -> GlobalData.dieselCronsActive.max()
+      "maxActiveCrons" -> GlobalData.dieselCronsActive.max(),
+      "wikiCount" -> RazMongo("WikiEntry").size,
+      "wikiOptions" -> GlobalData.wikiOptions,
+      "collectedAst" -> DomCollector.withAsts(_.size),
+      "loadedReactors" -> WikiReactors.reactors.keys.mkString(","),
+      "allReactors" -> WikiReactors.allReactors.keys.mkString(",")
     )
     ) ++ DieselRateLimiter.toj
-  }
-
-  def perfMap() = {
-    Map(
-      "maxConfThreads" -> Services.config.prop("akka.actor.default-dispatcher.thread-pool-executor.fixed-pool-size"),
-      "serving" -> GlobalData.serving.get(),
-      "servingApiRequests" -> GlobalData.servingApiRequests.get(),
-      "limitedRequests" -> GlobalData.limitedRequests.get(),
-      "maxServing" -> GlobalData.maxServing.get(),
-      "maxServingApiRequests" -> GlobalData.maxServingApiRequests.get(),
-      "dieselEnginesTotal" -> GlobalData.dieselEnginesTotal.get(),
-      "dieselEnginesActive" -> GlobalData.dieselEnginesActive.get(),
-      "activeEngines" -> DieselAppContext.activeEngines.size,
-      "activeActors" -> DieselAppContext.activeActors.size,
-      "activeStreams" -> DieselAppContext.activeStreams.size
-    )
   }
 }
 

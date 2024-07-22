@@ -199,6 +199,8 @@ object DieselMsg {
   final val WIKI_UPDATED = "$msg diesel.wiki.updated"
   final val USER_JOINED = "$msg diesel.user.joined"
 
+  final val DIESEL_REQUIRE = "diesel.require"
+
   final val GPOLL = "diesel.guardian.poll"
 
   final val irunDom = "irunDom:"

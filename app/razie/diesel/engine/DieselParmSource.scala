@@ -56,6 +56,11 @@ class DieselParmSource (ctx:DomEngECtx) extends ParmSource {
           Left(new P("diesel.user.name", ctx.dieselAU(ctx).map(_.userName).mkString))
         }),
 
+        "xapikey" -> (n => {
+          // leave this lazy - it is expensive
+          Left(new P("diesel.user.xapikey", ctx.dieselAU(ctx).flatMap(_.apiKey).mkString))
+        }),
+
         "roles" -> (n => {
           // leave this lazy - it is expensive
           Left(P.fromSmartTypedValue("diesel.user.roles", ctx.dieselAU(ctx).toList.flatMap(_.roles.toList)))

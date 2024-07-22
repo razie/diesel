@@ -139,7 +139,7 @@ case class ELink(msg: String, url: String = "") extends EInfoPos {
 
 /** a simple info node with a message and details - details are displayed as a popup */
 case class ETrace(msg: String, details: String = "") extends EInfoPos {
-  razie.Log.debug(Enc.unescapeHtml(msg))
+  razie.Log.trace(Enc.unescapeHtml(msg))
 
   override def toHtml = {
     val spos = if (pos.isDefined) kspan("pos") else ""

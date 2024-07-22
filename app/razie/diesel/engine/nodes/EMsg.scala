@@ -351,12 +351,14 @@ case class EMsg(
   /** is it public visilibity */
   def isPublic =
     spec.map(_.arch).exists(_ contains PUBLIC) ||
-      spec.map(_.stype).exists(_ contains PUBLIC)
+        spec.map(_.stype).exists(_ contains PUBLIC)
+        // we do NOT check this.stype because this may be coming from unsecured user
 
   // todo not used right now - hassle since you have a trust list anyways...
   def isProtected =
     spec.map(_.arch).exists(_ contains PROTECTED) ||
     spec.map(_.stype).exists(_ contains PROTECTED)
+  // we do NOT check this.stype because this may be coming from unsecured user
 
   /** use the right parm types **/
   def typecastParms(spec: Option[EMsg]) : EMsg = {

@@ -26,10 +26,11 @@ import razie.diesel.model.DieselMsg
 import razie.diesel.utils.DomCollector
 import razie.hosting.Website
 import razie.wiki.admin.GlobalData
-import razie.wiki.model.WikiConfigChanged
+import razie.wiki.model.{WikiCache, WikiConfigChanged}
 import razie.wiki.{Config, Enc, Services}
 import scala.collection.JavaConverters._
-import scala.collection.mutable.{HashMap, ListBuffer}
+import scala.collection.mutable
+import scala.collection.mutable.{HashMap, LinkedHashMap, ListBuffer, TreeMap}
 import scala.io.Source
 import scala.util.Try
 import services.DieselCluster
@@ -258,7 +259,7 @@ object EEDieselExecutors {
   var updatingDeleted = false
 
   /** get all ping data */
-  def dieselPing() = {
+  def dieselPing(): mutable.Map[String, Any] = {
     val osm: OperatingSystemMXBean = ManagementFactory.getOperatingSystemMXBean();
 
     val mstats = new HashMap[String, Any] // no prefix
@@ -271,36 +272,35 @@ object EEDieselExecutors {
     }
 
 
-    GlobalData.toMap() ++
-        Map(
-          "moreStats" -> Map(
-            "scriptsRun" -> WikiScripster.count,
-            "Diesel" -> GlobalData.perfMap(),
-            "DomGuardian.size" -> DomGuardian.lastRuns.size,
-            "DomCollector.size" -> DomCollector.withAsts(_.size)
-          ),
-          "os" -> osusage(""),
-          "db" -> mstats,
-          "build" -> Config.verMap,
-          "config" -> Map(
-            "dieselLocalUrl" -> Services.config.dieselLocalUrl,
-            "localQuiet" -> Services.config.localQuiet,
-            "node" -> Services.config.node,
-            "isLocalhost" -> Services.config.isLocalhost,
-            "trustLocalMods" -> Config.trustLocalMods,
-            "trustLocalUsers" -> Config.trustLocalUsers,
-            "cacheWikis" -> Services.config.cacheWikis,
-            "cacheFormat" -> Services.config.cacheFormat,
-            "cacheDb" -> Services.config.cacheDb
-          ),
-          "cron" -> DieselCron.cronStats,
-          "cluster" -> Services.cluster.clusterStats,
-          "memDb" -> inmemdbstats("")
-        )
+    GlobalData.toMap() ++ LinkedHashMap(
+      "build" -> Config.verMap,
+      "os" -> osusage(""),
+      "moreStats" -> LinkedHashMap(
+        "scriptsRun" -> WikiScripster.count,
+        "DomGuardian.size" -> DomGuardian.lastRuns.size,
+        "DomCollector.size" -> DomCollector.withAsts(_.size)
+      ),
+      "cluster" -> Services.cluster.clusterStats,
+      "cron" -> DieselCron.cronStats,
+      "config" -> LinkedHashMap(
+        "dieselLocalUrl" -> Services.config.dieselLocalUrl,
+        "localQuiet" -> Services.config.localQuiet,
+        "node" -> Services.config.node,
+        "isLocalhost" -> Services.config.isLocalhost,
+        "trustLocalMods" -> Config.trustLocalMods,
+        "trustLocalUsers" -> Config.trustLocalUsers,
+        "cacheWikis" -> Services.config.cacheWikis,
+        "cacheFormat" -> Services.config.cacheFormat,
+        "cacheDb" -> Services.config.cacheDb,
+        "wikiCacheExpirySec" -> WikiCache.cacheExp
+      ),
+      "db" -> mstats,
+      "memDb" -> inmemdbstats("")
+    )
   }
 
   def inmemdbstats(prefix: String) = {
-    Map(
+    LinkedHashMap(
       "statsSessions" -> EEDieselDb.statsSessions,
       "statsCollections" -> EEDieselDb.statsCollections,
       "statsObjects" -> EEDieselDb.statsObjects

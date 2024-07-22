@@ -870,7 +870,7 @@ abstract class DomEngine (
     val desc = DomAst(EInfo(
       description,
       "cr: " + this.createdDtm.toString + "\n"+
-      this.pages.map(_.specRef.wpath).mkString("\n") + "\n" +
+      this.pages.map(p=> p.specRef.wpath + " ("+(if(p.cacheable) "c" else "noncache")+")").mkString("\n") + "\n" +
           this.settings.toString
     ), AstKinds.DEBUG).withStatus(DomState.SKIPPED)
 
@@ -1248,7 +1248,7 @@ abstract class DomEngine (
   def addResponseInfo(code: Int, body: String, headers: Map[String, String]): Unit = {
     val h = headers.mkString("\n")
     val ast = new DomAst(
-      EInfo(s"Response: ${code} BODY: ${body.take(500)}", s"BODY:\n${body}\n\nHEADERS:\n$h"), AstKinds.TRACE)
+      ETrace(s"Response: ${code} BODY: ${body.take(500)}", s"BODY:\n${body}\n\nHEADERS:\n$h"), AstKinds.TRACE)
     this.root.appendAllNoEvents(List(ast))
     withReturned(body, code)
   }

@@ -1373,25 +1373,32 @@ class DomApi extends DomApiBase with Logging {
 
 
   /** /diesel/proxy/path   proxy real service GET */
-  def proxy(ipath: String) = Filter(noRobots) { implicit stok =>
+  def proxy(ipath: String) = FAUPRAPI(true) { implicit stok =>
     val  path = Enc.fromUrl(ipath + "?") + stok.ireq.rawQueryString
     clog << "diesel/proxy GET " + path
-    val sc = SnakkCall("http", "GET", path, Map.empty, "").setUrl(Snakk.url(path))
+    val host = ipath.split("(?<![/:])/", 2).head
+    val p = if (ipath startsWith("https")) "https" else "http"
+    val sc = SnakkCall(p, "GET", path, Map.empty, "").setUrl(Snakk.url(path))
     val ec = sc.eContent
     Ok(ec.body)
         .as(ec.contentType)
         .withHeaders("Access-Control-Allow-Origin" -> "*")
+        .withCookies(Cookie("dieselProxyHost", host, Some(10)))
   }
 
   /** proxy real service GET */
-  def proxyPost(ipath: String) = RAction { implicit stok =>
+  def proxyPost(ipath: String) = FAUPRAPI(true) { implicit stok =>
     val  path = Enc.fromUrl(ipath + "?" + stok.ireq.rawQueryString)
     clog << "diesel/proxy POST " + path
-    val sc = SnakkCall("http", "POST", path, Map.empty, "")
+    val host = ipath.split("(?<![/:])/", 2).head
+    val p = if (ipath startsWith("https")) "https" else "http"
+    val headers = stok.ireq.headers.toSimpleMap
+    val sc = SnakkCall(p, "POST", path, headers, "")
     val ec = sc.eContent
     Ok(ec.body)
         .as(ec.contentType)
         .withHeaders("Access-Control-Allow-Origin" -> "*")
+        .withCookies(Cookie("dieselProxyHost", host, Some(10)))
   }
 
   /** calc the diff draft to original for story and spec */

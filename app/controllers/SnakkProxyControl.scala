@@ -45,14 +45,15 @@ class SnakkProxyControl extends RazController with Logging {
 
     try {
       val raw = request.body.asBytes()
-      val body = raw.map {a => new String(a.asByteBuffer.array(), "UTF-8")}.getOrElse("")
+      /* RAZ play 2.6  val body = raw.map {a => new String(a.asByteBuffer.array(), "UTF-8")}.getOrElse("") */
+      val body = raw.map(a => new String(a.toArray)).getOrElse("")
 
-      log("SNAKKPROXY RECEIVED: " + body.replaceAllLiterally("\n", ""))
+      log("SNAKKPROXY_RECEIVED: " + body.replaceAllLiterally("\n", ""))
 
       val resp = Snakk.responseFromJson(body)
       SnakkCallAsyncList.complete(id, resp)
     } catch {
-      case t : Throwable => log(t.toString)
+      case t : Throwable => log("During SNAKKPROXY_RECEIVED:" + t.toString)
     }
 
     Ok("")
@@ -67,14 +68,14 @@ class SnakkProxyControl extends RazController with Logging {
         .withCookies(request.ireq.cookies)
         .withSession(request.ireq.session)
 
-    log("SNAKKPROXY Proxying - " + sc.toJson.replaceAllLiterally("\n", " "))
+    log("SNAKKPROXY_Proxying - " + sc.toJson.replaceAllLiterally("\n", " "))
 
     val f = sc.future
     implicit val ec: ExecutionContext = Services.system.getDispatcher
     lazy val timeout = after(duration = TOUT, using = Services.system.scheduler)(Future.successful(RequestTimeout("Request timeout !!")))(ec)
 
     val result = f.map {response=>
-      log("SNAKKPROXY returning - " + response)
+      log("SNAKKPROXY_returning - " + response)
       new Status(response.resCode )(response.content).withHeaders(response.headers.toSeq:_*)
     }(ec)
 

@@ -13,6 +13,7 @@ import razie.wiki.{Config, Services}
 import razie.wiki.admin.GlobalData
 import razie.wiki.model.{WikiConfigChanged, WikiObservers}
 import scala.collection.concurrent.TrieMap
+import scala.collection.mutable.{LinkedHashMap, TreeMap}
 
 /** a rate limit group */
 case class RateLimitGroup(
@@ -133,8 +134,8 @@ object DieselRateLimiter extends razie.Logging {
 //    else None
   }
 
-  def toj = {
-    Map(
+  def toj: LinkedHashMap[String, Any] = {
+    LinkedHashMap(
       "rateLimits" ->
           rateLimits.map(t =>
             t._1 -> Map(

@@ -28,9 +28,9 @@ object WikiCache {
     CACHE_EXP.get
   }
 
-  def set[T](id:String, w:T, i:Int = cacheExp) = {
+  def set[T](id:String, w:T, seconds:Int = cacheExp) = {
     ctrace << "WIKI_CACHE_SET   - "+id
-    Services.cache.set(id, w, i.seconds)
+    Services.cache.set(id, w, seconds.seconds)
     GlobalData.wikiCacheSets.incrementAndGet()
   }
 
