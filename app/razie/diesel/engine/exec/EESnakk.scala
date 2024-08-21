@@ -22,11 +22,12 @@ import razie.hosting.Website
 import razie.tconf.{DTemplate, EPos}
 import razie.wiki.Enc
 import razie.wiki.model.WID
-import razie.{Logging, js}
+import razie.{Logging, Snakk, js}
 import scala.Option.option2Iterable
 import scala.collection.mutable
-import scala.collection.mutable.ListBuffer
+import scala.collection.mutable.{HashMap, ListBuffer}
 import scala.util.Try
+import scala.xml.{Elem, Node}
 
 /** executor for snakking REST APIs */
 class EESnakk extends EExecutor("snakk") with Logging {
@@ -84,7 +85,12 @@ class EESnakk extends EExecutor("snakk") with Logging {
     } else if(in.ea == "snakk.parse.json") {
         reply.asJsonPayload :: Nil
     } else {
-      P.fromSmartTypedValue(Diesel.PAYLOAD, new IllegalArgumentException("Can't parse xml yet")) :: Nil //.withPos(pos)
+      val elem = Snakk.xmlParsed(response)
+
+//      val x = xmltoj (elem)
+
+      P.fromSmartTypedValue(Diesel.PAYLOAD, elem)
+          .withCachedValue(elem, WTypes.wt.XML, response) :: Nil
     }
 
     // add the resulting values
@@ -97,17 +103,44 @@ class EESnakk extends EExecutor("snakk") with Logging {
     }
   }
 
+  def xmltoj (x:Elem) : Any = {
+    val m = new HashMap[String,Any]()
+
+//    x.foreach { n:Node =>
+//      n.nonEmptyChildren
+//    }
+
+    m
+  }
+
+  def xmltoj (n:Node): Any = {
+    val m = new HashMap[String,Any]()
+
+//    n.nonEmptyChildren.foreach { c:Node =>
+//        if (c.xmlType())
+//      m.put (c.label, c.xmlType())
+//    }
+
+    m
+  }
+
   /** execute the snakk task then */
   override def apply(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any] = {
 
-    if(in.ea startsWith  "snakk.parse.")
+    if (in.ea startsWith  "snakk.parse.")
       return parseApply(in, destSpec)
 
     // FFD is separate
-    if(in.ea == "snakk.ffd")
+    if (in.ea == "snakk.ffd")
       return snakkFfd(in, destSpec)
-    else if(in.ea == "snakk.ffdFormat")
+    else if (in.ea == "snakk.ffdFormat")
       return formatFfd(in, destSpec)
+    else if (in.ea == "snakk.sftp.upload")
+      return sftpUpload(in, destSpec)
+    else if (in.ea == "snakk.sftp.download")
+      return sftpDownload(in, destSpec)
+
+    // for all other snakk.xxx calls
 
     var filteredAttrs = in.attrs.filter(_.name != SNAKK_HTTP_OPTIONS)
 
@@ -123,7 +156,7 @@ class EESnakk extends EExecutor("snakk") with Logging {
 
     // reference to what was used to parse it - for debug navigation
     val pos = templateReq.map(_.pos).orElse{
-      if(in.entity == "snakk") in.pos
+      if (in.entity == "snakk") in.pos
       else (spec(in).flatMap(_.pos))
     }
 
@@ -177,7 +210,9 @@ class EESnakk extends EExecutor("snakk") with Logging {
                   ctx.curNode.map(node =>
                     ("dieselNodeId" -> node.id)).toList.filter(x => !sc.headers.contains("dieselNodeId")) ++
                       ctx.root.asInstanceOf[DomEngECtx].settings.userId.map(x =>
-                        ("dieselUserId" -> x)).toList.filter(x => !sc.headers.contains("dieselUserId")) ++
+                        ("dieselUserId" -> x)).toList.filter(x =>
+                          // not sending user id unless it's a diesel url no?
+                        !sc.headers.contains("dieselUserId") && newurl.contains("/diesel/")) ++
                       ctx.root.asInstanceOf[DomEngECtx].settings.configTag.map(x =>
                         ("dieselConfigTag" -> x)).toList.filter(x => !sc.headers.contains("dieselConfigTag"))
                 }.toMap
@@ -208,9 +243,15 @@ class EESnakk extends EExecutor("snakk") with Logging {
 
             eres += EVal(P.undefined(SNAKK_ERROR))
 
+            val resCT = sc.iContentType.getOrElse {
+              if (in.met == "json") "application/json"
+              else if (in.met == "xml") "application/xml"
+              else ""
+            }
+
             new EContent(
               response,
-              sc.iContentType.getOrElse(""),
+              sc.iContentType.getOrElse(resCT),
               sc.icode.getOrElse(-1),
               sc.iHeaders.getOrElse(Map.empty),
               sc.root)
@@ -811,6 +852,50 @@ object EESnakk {
     } ::: results.getErrors.map(x=> EError("FFD Err: " + x))
   }
 
+  private def setupJsch (host:String, port:String, user:String, pwd:String) = {
+//    val jsch = new Nothing
+//    jsch.setKnownHosts("/Users/john/.ssh/known_hosts")
+//    val jschSession = jsch.getSession(username, remoteHost)
+//    jschSession.setPassword(password)
+//    jschSession.connect
+//    jschSession.openChannel("sftp").asInstanceOf[Nothing]
+  }
+
+  /** upload sftp
+    *
+    * $msg snakk.sftp.upload (host, port, user, pwd, file)
+    */
+  def sftpUpload(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any] = {
+    val host = ctx.getRequired("host")
+    val port = ctx.getRequired("port")
+    val user = ctx.getRequired("user")
+    val pwd = ctx.getRequired("pwd")
+
+
+//    val results = new FFDPayload("", schema.mkString).build(ctx)
+
+//    results.getResult.toList.flatMap {res=>
+//      output.toList.map(name=>new P(name, res)) :::
+//          EVal(new P(PAYLOAD, res)) :: Nil
+//    } ::: results.getErrors.map(x=> EError("FFD Err: " + x))
+  Nil
+  }
+  def sftpDownload(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any] = {
+    val host = ctx.getRequired("host")
+    val port = ctx.getRequired("port")
+    val user = ctx.getRequired("user")
+    val pwd = ctx.getRequired("pwd")
+
+
+//    val results = new FFDPayload("", schema.mkString).build(ctx)
+
+//    results.getResult.toList.flatMap {res=>
+//      output.toList.map(name=>new P(name, res)) :::
+//          EVal(new P(PAYLOAD, res)) :: Nil
+//    } ::: results.getErrors.map(x=> EError("FFD Err: " + x))
+    Nil
+  }
+
   override def toString = "$executor::snakk "
 
   def caughtSnakkException (t:Throwable, httpOptions:Map[String, Any], response:String, startMillis:Long, eres:InfoAccumulator) = {
@@ -865,12 +950,12 @@ object EESnakk {
     if (code > 0) eres += EVal(P.fromTypedValue(EESnakk.SNAKK_HTTP_CODE, code)).withKind(AstKinds.TRACE) :: Nil
     if (errContent.length > 0) eres += EVal(P.fromTypedValue(EESnakk.SNAKK_HTTP_RESPONSE, errContent)) :: Nil
 
-    val headers = if(t.isInstanceOf[CommRtException]) {
+    val headers = if(t.isInstanceOf[CommRtException] && t.asInstanceOf[CommRtException].uc != null) {
       val uc = t.asInstanceOf[CommRtException].uc
       val x = uc.getHeaderFields.keySet().toArray.toList
       val headers = x.filter(_ != null).map(x => (x.toString, uc.getHeaderField(x.toString))).toMap
       eres += EVal(EContent.headersp(headers)).withKind(AstKinds.TRACE) // todo deprecated - remove
-      headers.asInstanceOf[Map[String,String]]
+      headers.asInstanceOf[Map[String, String]]
     } else Map.empty[String,String]
 
     val traceId = headers.get("dieselFlowId").map { t =>

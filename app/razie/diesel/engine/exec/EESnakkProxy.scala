@@ -37,11 +37,15 @@ class EESnakkProxy extends EExecutor("diesel.proxy") {
     in.ea match {
 
 /*
+
 $send diesel.proxy.start(
   name="107",
-  dests="elastic:9200,kibana:5601",
+  dests="elastic:9200,kibana:5601,spark-hl.netlinq.svc.cluster.local:4041,toc-headless:7001",
   sources="www.dieselapps.com"
   )
+
+https://www.dieselapps.com/snakk/proxy/107/http/spark-hl.netlinq.svc.cluster.local/4041/status
+
 */
 
       case "diesel.proxy.start" => {

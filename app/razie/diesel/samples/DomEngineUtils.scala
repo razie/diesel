@@ -60,6 +60,19 @@ object DomEngineUtils {
 
   final val NOUSER = new ObjectId()
 
+  /** create a story from a string, to properly run it
+    *
+    * @return (story, description)
+    */
+  def storyFromString (msg: String) : (String,String) = {
+    val story = if (msg.trim.startsWith("$msg") || msg.trim.startsWith("$send")) msg else "$msg " + msg
+    ctrace << "STORY: " + story
+
+    val desc = if (msg.startsWith("$msg ctx.set")) msg.replaceFirst("""^\$msg ctx.set.*""", "") else msg
+
+    (story, desc)
+  }
+
   /** execute message - this is the typical use of an engine
     * execute message to given reactor
     *
@@ -110,10 +123,7 @@ object DomEngineUtils {
     else
       DieselMsg.logdb("DIESEL_FIDDLE_RUNDOM ", msg)
 
-    var story = if (msg.trim.startsWith("$msg") || msg.trim.startsWith("$send")) msg else "$msg " + msg
-    ctrace << "STORY: " + story
-
-    val desc = if (msg.startsWith("$msg ctx.set")) msg.replaceFirst("""^\$msg ctx.set.*""", "") else msg
+    val (story, desc) = storyFromString(msg)
 
     createEngine(None, Option(story), specs, stories, settings, omsg, preppedCache, Option(desc))
   }

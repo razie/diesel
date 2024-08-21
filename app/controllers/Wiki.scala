@@ -340,7 +340,20 @@ class Wiki @Inject()(domainController: DomainController) extends WikiBase {
         Ok(j.toString).as("application/json")
       }).getOrElse(NotFound("WID not found:"+wid.wpath))
 
-      case "content" => wid.page.map(w=> Ok(w.content.replaceAllLiterally("\r\n", "\n")).as("text/plain")).getOrElse(NotFound("WID not found:"+wid.wpath))
+      case "json" =>
+        wid.page.map(w=> Ok(w
+              .copy(content="")
+              .grated.toString)
+              .as("text/plain"))
+          .getOrElse(NotFound("WID not found:"+wid.wpath))
+
+      case "content" => wid.page
+          .map(w=> Ok(
+            w.content
+              .replaceAllLiterally("\r\n", "\n"))
+              .as("text/plain"))
+              .getOrElse(NotFound("WID not found:"+wid.wpath))
+
       case "included" => wid.page.map(w=> Ok(w.included).as("text/plain")).getOrElse(NotFound("WID not found:"+wid.wpath))
       case "xp"  => xp(wid, cw.rest).apply(request).value.get.get
       case "xpl" => xpl(wid, cw.rest).apply(request).value.get.get

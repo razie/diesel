@@ -39,6 +39,7 @@ import scala.concurrent.{Await, Future}
 import scala.util.Try
 import scalaz.\&/.That
 import RazRequestUtils.printRequest
+import com.razie.pub.comms.CommRtException
 /**
   * the incoming message / request
   */
@@ -201,16 +202,59 @@ class DomApi extends DomApiBase with Logging {
 
       DieselMsg.logdb("DIESEL_FIDDLE_iRUNSTR", stok.au.map(_.userName).getOrElse("Anon"), s"EA : ${path.take(500)}")
 
-      var settings = DomEngineHelper.settingsFrom(stok)
-      settings = settings.copy(realm = Some(reactor))
+    var settings = DomEngineHelper.settingsFrom(stok)
 
-      // todo review security. Should use current user but if this is a spawn, the original user is passed in.
-      // how to sign it? who can impersonate other users?
-      val userId = settings.userId.map(new ObjectId(_)) orElse stok.au.map(_._id)
+    // todo review security. Should use current user but if this is a spawn, the original user is passed in.
+    // how to sign it? who can impersonate other users?
+    val userId = settings.userId.map(new ObjectId(_).toString) orElse stok.au.map(_._id.toString)
 
-      val engine = strMsg.mkEngine
+    // if no header with user, see if there is an actual user (cookies propagate context)
+    if(settings.userId.isEmpty) settings = settings.copy(userId = userId)
 
-      engine.root.prependAllNoEvents(List(
+    settings = settings.copy(realm = Some(reactor))
+
+
+    // --------------- FAST
+
+
+    val uid = stok.au.map(_._id).getOrElse(NOUSER)
+    val description = s"strmsg:"+ strMsg.getEMsg
+    val body = strMsg.msg
+    val mainStory = new WikiEntry("Story", "temp", "temp", "md", body, uid, Seq("dslObject"), reactor)
+
+    var engine = EnginePrep.prepEngine(new ObjectId().toString,
+      settings,
+      reactor,
+      None,
+      false,
+      stok.au,
+      description,
+      None,
+      // empty story so nothing is added to root
+      //List(new WikiEntry("Story", "temp", "temp", "md", "", uid, Seq("dslObject"), reactor))
+      List(mainStory)
+    )
+
+
+ // todo this is what it was before - but it's much slower for some reason.
+ // now using same as diesel/rest, copied above
+
+     // val engine = strMsg.mkEngine
+
+
+    engine.root.prependAllNoEvents(
+      List(DomAst(
+        ETrace("AUTH details",
+          s"User: ${stok.au.map(_.userName)}, roles: ${settings.user.map(_.roles)}, clients: ${settings.user.map(_.authClient)}, realm:${settings.user.map(_.authRealm)}, method: ${settings.user.map(_.authMethod)}"),
+        AstKinds.DEBUG)
+          .withStatus(DomState.SKIPPED),
+        DomAst(
+          EInfo("HTTP Request details2",
+            printRequest(stok.ireq, body)), AstKinds.DEBUG)
+            .withStatus(DomState.SKIPPED)
+      ))
+
+    engine.root.prependAllNoEvents(List(
         DomAst(
           EInfo("STRMSG Request details", path),
           AstKinds.DEBUG)
@@ -228,7 +272,16 @@ class DomApi extends DomApiBase with Logging {
 
       def isApiKeyGood = stok.validateXApiKey
 
-      val isPublic = msg.exists(isMsgPublic(_, reactor, website))
+    // todo speed up with a lookup
+    /** can i find a msg or a rule marked <public> ? */
+    def ispub2 = (engine.dom.moreElements collect {
+      case m : EMsg if m.ea == ea =>
+        m.isPublic || m.stype.contains("public")
+      case m : ERule if m.e.cls == e && m.e.met == a =>
+        m.arch.contains("public")
+    }).fold(false)(_ || _)
+
+      val isPublic = msg.exists(isMsgPublic(_, reactor, website)) || ispub2
       val isTrusted = isMemberOrTrusted(msg, reactor, website)
 
       engine.withInitialMsg(msg)
@@ -1394,11 +1447,23 @@ class DomApi extends DomApiBase with Logging {
     val p = if (ipath startsWith("https")) "https" else "http"
     val headers = stok.ireq.headers.toSimpleMap
     val sc = SnakkCall(p, "POST", path, headers, "")
-    val ec = sc.eContent
-    Ok(ec.body)
-        .as(ec.contentType)
-        .withHeaders("Access-Control-Allow-Origin" -> "*")
-        .withCookies(Cookie("dieselProxyHost", host, Some(10)))
+    try {
+      val ec = sc.eContent
+      Ok(ec.body)
+          .as(ec.contentType)
+          .withHeaders("Access-Control-Allow-Origin" -> "*")
+          .withCookies(Cookie("dieselProxyHost", host, Some(10)))
+    } catch {
+      // pass code that came from comms - likely other side threw a
+      case cex : CommRtException => {
+        Status(cex.httpCode)
+            .apply("PROXIED ERROR: " + cex.details)
+            .withHeaders("Access-Control-Allow-Origin" -> "*")
+            .withCookies(Cookie("dieselProxyHost", host, Some(10)))
+      }
+
+      case t : Throwable => throw t
+    }
   }
 
   /** calc the diff draft to original for story and spec */
