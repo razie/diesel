@@ -7,7 +7,7 @@
 package razie.wiki
 
 import com.typesafe.config.ConfigFactory
-import play.Configuration
+import play.api.Configuration
 import razie.wiki.model.{WikiConfigChanged, WikiEntry, WikiEvent, WikiObservers}
 
 /**
