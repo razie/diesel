@@ -348,9 +348,21 @@ function dismissPost(hid,eid) {
 });
 }
 
+function decodeHTMLEntities(text) {
+  var textArea = document.createElement('textarea');
+  textArea.innerHTML = text;
+  return textArea.value;
+}
+
+function myunescape(text) {
+  return decodeURI(text
+      .replaceAll("&amp;", "&")
+  );
+}
+
 function Extra (x) {
   $("#extra").html('<span class="badge">Loading...</span><br><br>');
-  $("#extra").load(x);
+  $("#extra").load(myunescape(x));
 }
 
 function addInsight() {

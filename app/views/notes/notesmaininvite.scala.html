@@ -7,6 +7,9 @@ msg types are msg, err
 @import mod.notes.controllers.NotesLocker
 @import mod.notes.controllers.NotesTips
 @import mod.notes.controllers.routes
+@import helper.twitterBootstrap._
+@import play.api.Play.current
+@import play.api.i18n.Messages.Implicits._
 
 @stok.title("invite?")
 
@@ -25,10 +28,6 @@ msg types are msg, err
 
 <div class="well" style="padding-bottom:0px">
 
-@import helper.twitterBootstrap._
-@import play.api.Play.current
-@import play.api.i18n.Messages.Implicits._
-
 @helper.form(action=routes.NotesLocker.save(), 'class->"form-inline", 'style->"margin-bottom:0px") {
 
   @helper.textarea(
@@ -38,32 +37,24 @@ msg types are msg, err
     'class -> "col-sm-12",
     'rows->rows)
 
-   <div id="xflash" ><h2 id="flash1" style="text-align:center; width:100%; color:#49afcd;">preview</h2><p id="flash2" style="text-align:center; width:100%">preview mode only</p></div>
+  <div id="xflash" ><h2 id="flash1" style="text-align:center; width:100%; color:#49afcd;">preview</h2><p id="flash2" style="text-align:center; width:100%">preview mode only</p></div>
 
-   <div class="col-sm-12" style="margin-left:0px; padding-left: 0px; padding-right : 0px; padding-bottom: 10px;">
-       Tags <small>i.e. note,todo,forjohn,phone,email,contact,project1 </small>
-       <div style="float:right">
-           <a class="btn btn-xs" onclick="larger()" title="This is not twitter, eh?">+ Larger</a>
-       </div>
-   </div>
+  <div class="col-sm-12" style="margin-left:0px; padding-left: 0px; padding-right : 0px; padding-bottom: 10px;">
+    Tags <small>i.e. note,todo,forjohn,phone,email,contact,project1 </small>
+    <div style="float:right">
+      <a class="btn btn-xs" onclick="larger()" title="This is not twitter, eh?">+ Larger</a>
+    </div>
+  </div>
 
   @helper.inputText(
     myForm("tags"),
-      '_label -> "",
-//    '_label -> Html("""
-//       <div class="col-sm-12" style="margin-left:0px">
-//       Tags <small>i.e. note,todo,forjohn,phone,email,contact,project1 </small>
-//  <div style="float:right">
-//      <a class="btn btn-xs" onclick="larger()" title="This is not twitter, eh?">+ Larger</a>
-//  </div>
-//       </div>
-//       """),
+    '_label -> "",
     'class -> "col-sm-12",
     'autocomplete -> "off",
     '_showConstraints -> false)
 
   @myForm.globalError.map { err=>
-     <p style="color:red;font-weight:bold">@err.message</p>
+    <p style="color:red;font-weight:bold">@err.message</p>
   }
 
   <input id="id" type="hidden" name="id" value="@nid" />
