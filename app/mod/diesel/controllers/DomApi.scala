@@ -1396,8 +1396,7 @@ class DomApi extends DomApiBase with Logging {
 //          raw.map(_.asByteBuffer.array())))
       raw.map(_.toArray)))
 
-    if (stok.au.exists(_.isActive)) {
-      if(body.length > 0) {
+      if (body.length > 0) {
         val m = if(body startsWith "$") body else "$msg " + body
         val strMsg = DieselMsgString(
           m,
@@ -1415,13 +1414,6 @@ class DomApi extends DomApiBase with Logging {
               .withHeaders("Access-Control-Allow-Origin" -> "*")
         )
       }
-    } else {
-      Future.successful(
-        Unauthorized("""<span style="color:red;font-weight:bold;">hard skills</span>""")
-        .withHeaders("dieselReason" -> "Not localhost or not authorized!")
-            .withHeaders("Access-Control-Allow-Origin" -> "*")
-      )
-    }
   }
 
 
