@@ -7,8 +7,6 @@
 package razie.wiki.model.features
 
 import org.bson.types.ObjectId
-import play.api.Play.current
-import play.api.cache._
 import razie.db._
 import razie.db.tx.txn
 import razie.wiki.Services
