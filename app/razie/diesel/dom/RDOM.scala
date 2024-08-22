@@ -362,6 +362,9 @@ object RDOM {
         case s: JSONArray => new P(name, "", expOrElse(WTypes.wt.ARRAY)).withValue(js.fromArray(s),
           expOrElse(WTypes.wt.ARRAY))
 
+        case x: scala.xml.Elem =>
+          new P(name, "", WTypes.wt.XML).withCachedValue(x, WTypes.wt.XML, "")
+
         case s: String => {
           expectedType match {
             case WType(WTypes.JSON, _, _, _) => new P(name, "", expectedType).withCachedValue(

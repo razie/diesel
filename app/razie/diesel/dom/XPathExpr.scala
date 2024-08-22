@@ -12,65 +12,23 @@ import razie.diesel.dom.RDOM.P
 import razie.diesel.expr.{ECtx, Expr}
 import razie.tconf.SpecRef
 
-/** an xpath expr
+/** an xpath expr resolved with diesel ki categories AND/OR domain and inventory elements
   *
   * @param prefix is one of xp, xpl, xpa, xpla
   * @param expr is the rest of the expression
   */
-case class XPathIdent(val prefix:String, override val expr: String) extends Expr {
+case class XPathIdent (val prefix:String, override val expr: String) extends Expr {
   val g = GPath(expr)
 
   override def apply(v: Any)(implicit ctx: ECtx) = ctx.apply(expr)
 
-  override def applyTyped(v: Any)(implicit ctx: ECtx): P = {
-    def xpl(path: String, p: Option[P] = None):P = {
-      (for (
-        worig <- xpRoot(p)
-      ) yield {
-        val cat = worig.ttype.schema
-        val rdom = ctx.domain.orElse(ctx.root.domain).get
-        val dom = WikiDomain(rdom.name)
-        val c = rdom.classes.get(worig.ttype.schema)
-
-        val root = if(c.isDefined && !dom.isWikiCategory(cat))
-          new razie.Snakk.Wrapper(new DASWrapper(worig), DOMXpSolver)
-          else
-          new razie.Snakk.Wrapper(new DASWrapper(worig), DASXpSolver)
-
-        Audit.logdb("XP-L", p.mkString + "/xpl/" + path)
-
-        val xpath = "*/" + g.elements.tail.mkString("/")
-        val res = if(!g.isAttr) {
-          // map each entry to its own p in an array
-          val le = (root xpl xpath).map(_.p)
-          val p = prefix match {
-            case "xp" | "xpl" => { // p of list
-              val t = P.inferArrayTypeFromP(le)
-              P.fromTypedValue("", le, t)
-            }
-            case "xpe"        => le.headOption.getOrElse(P.undefined("")) // one entity
-          }
-          p
-        } else {
-          val la = (root xpla xpath)
-          val p = prefix match {
-            case "xpa"         => la.headOption.map(x=> P.fromTypedValue("", x)).getOrElse(P.undefined(""))
-            case "xp" | "xpla" => P.fromTypedValue("", la) // todo infer simple type of the array?
-          }
-          p
-        }
-
-//      val tags = res.flatMap(_._3).filter(_ != "").groupBy(identity).map(t => (t._1, t._2.size)).toSeq.sortBy(_._2).reverse
-        res
-      }) getOrElse
-          P.undefined("")
-    }
+  override def applyTyped (v: Any)(implicit ctx: ECtx): P = {
 
     val startName = g.head.name
     val startp = ctx.getp(startName)
     startp.map {p=>
         // we found a root object to start from
-      xpl(expr, startp)
+      xpl (expr, startp)
     } getOrElse {
       // the root must be a class?
       val cat = startName
@@ -79,10 +37,13 @@ case class XPathIdent(val prefix:String, override val expr: String) extends Expr
       val dom = WikiDomain(ctx.root.settings.realm.mkString)
       val c = rdom.classes.get(cat)
 
-      val roots = if(c.isDefined && !dom.isWikiCategory(cat)) {
+      // known class but not wikicat
+      val roots = if (c.isDefined && !dom.isWikiCategory(cat)) {
         val ref = SpecRef.make(realm, "", "", cat, "")
-        val q = Option(g.head.cond).map(_.asMap).getOrElse(Map.empty)
-        val res = DomInventories.findByQuery(ref, Right(q), 0, 100, Array.empty[String])
+        val q = Option (g.head.cond).map(_.asMap).getOrElse(Map.empty)
+
+        // todo stich the sub-trace in the main tree
+        val res = DomInventories.findByQuery (ref, Right(q), 0, 100, Array.empty[String])
         val le = res.data.map(_.asP)//.map(x=> new DASWrapper(x))
 
         if(g.exceptFirst.size > 0) {
@@ -108,6 +69,53 @@ case class XPathIdent(val prefix:String, override val expr: String) extends Expr
       }
       roots
     }
+  }
+
+  // solve path from a root from a parameter
+  private def xpl(path: String, p: Option[P] = None)(implicit ctx: ECtx):P = {
+    (for (
+      worig <- xpRoot(p)
+    ) yield {
+      val cat = worig.ttype.schema
+      val rdom = ctx.domain.orElse(ctx.root.domain).get
+      val dom = WikiDomain(rdom.name)
+      val c = rdom.classes.get(worig.ttype.schema)
+
+      val root = if(c.isDefined && !dom.isWikiCategory(cat))
+        new razie.XpWrapper(new DASWrapper(worig), DOMXpSolver)
+      else
+        new razie.XpWrapper(new DASWrapper(worig), DASXpSolver)
+
+      Audit.logdb("XP-L", p.mkString + "/xpl/" + path)
+
+      val xpath = "*/" + g.elements.tail.mkString("/")
+
+      // solve it
+
+      val res = if(!g.isAttr) {
+        // map each entry to its own p in an array
+        val le = (root xpl xpath).map(_.p)
+        val p = prefix match {
+          case "xp" | "xpl" => { // p of list
+            val t = P.inferArrayTypeFromP(le)
+            P.fromTypedValue("", le, t)
+          }
+          case "xpe"        => le.headOption.getOrElse(P.undefined("")) // one entity
+        }
+        p
+      } else {
+        val la = (root xpla xpath)
+        val p = prefix match {
+          case "xpa"         => la.headOption.map(x=> P.fromTypedValue("", x)).getOrElse(P.undefined(""))
+          case "xp" | "xpla" => P.fromTypedValue("", la) // todo infer simple type of the array?
+        }
+        p
+      }
+
+//      val tags = res.flatMap(_._3).filter(_ != "").groupBy(identity).map(t => (t._1, t._2.size)).toSeq.sortBy(_._2).reverse
+      res
+    }) getOrElse
+        P.undefined("")
   }
 
   private def xpRoot(p: Option[P]) = {
@@ -190,14 +198,14 @@ object DASXpSolver extends XpSolver[DASWrapper] {
 object DOMXpSolver extends XpSolver[DASWrapper] {
 
   type T = DASWrapper
-  type CONT = PartialFunction[(String, String), List[DASWrapper]]  // getNext
+  type CONT = PartialFunction[(String, String), List[DASWrapper]]  // getNext:(String,String) => children
   type U = CONT
 
   val debug = true
 
   override def children(root: T, xe:Option[XpElement]): (T, U) = (root, {
     case (tag, assoc) if root.isInstanceOf[DASWrapper] =>
-      children2(root, tag, assoc, xe).toList.teeIf(debug,"C").toList
+      children2 (root, tag, assoc, xe).toList.teeIf(debug,"C").toList
   })
 
   override def getNext(o: (T, U), tag: String, assoc: String, xe:Option[XpElement]): List[(T, U)] = {
@@ -270,7 +278,5 @@ object DOMXpSolver extends XpSolver[DASWrapper] {
     (xe.cond match {
       case null => curr.asInstanceOf[List[(T, U)]]
       case _    => curr.asInstanceOf[List[(T, U)]].filter(x => xe.cond.passes(x._1, this))
-    }).filter(gaga => XP.stareq(gaga._1.asInstanceOf[DASWrapper].p.ttype.getClassName, xe.name))
+    }).filter (gaga => XP.stareq(gaga._1.asInstanceOf[DASWrapper].p.ttype.getClassName, xe.name))
 }
-
-

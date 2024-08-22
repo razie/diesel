@@ -82,7 +82,7 @@ class WikiIndex (val realm:String, val fallBacks : List[WikiIndex]) {
   }
 
   /** update an entry - call AFTER the we is persisted */
-  private def up(we: WikiEntry) {
+  private def up (we: WikiEntry): Unit = {
     if (we.category == "Category") {
       Wikis(realm).refreshCat(we)
       WikiDomain(realm).resetDom
@@ -99,7 +99,7 @@ class WikiIndex (val realm:String, val fallBacks : List[WikiIndex]) {
   }
 
   /** update from remote - in case there is no old version */
-  def update(neww: WID, oldw: WID) = withIndex { idx =>
+  def update(neww: WID, oldw: WID): Unit = withIndex { idx =>
     //    if (oldVer.category != newVer.category || oldVer.name != newVer.name || oldVer.realm != newVer.realm) {
 
     // doing it all the time because these WIDs cache the old version of the page so they need refreshing
@@ -123,7 +123,7 @@ class WikiIndex (val realm:String, val fallBacks : List[WikiIndex]) {
     neww.page.foreach(up)
   }
 
-  def update(oldVer: WikiEntry, newVer: WikiEntry) = withIndex { idx =>
+  def update(oldVer: WikiEntry, newVer: WikiEntry): Unit = withIndex { idx =>
     /* doing it all the time because these WIDs cache the old version of the page so they need refreshing*/
     // so this is not good: if (oldVer.category != newVer.category || oldVer.name != newVer.name || oldVer.realm != newVer.realm) {
 
@@ -142,7 +142,7 @@ class WikiIndex (val realm:String, val fallBacks : List[WikiIndex]) {
   }
 
   /** call when new wiki created - add it to the index */
-  def create(we: WikiEntry) = withIndex { idx =>
+  def create(we: WikiEntry): Unit = withIndex { idx =>
     idx.put(we.name, we.wid, we._id)
     lower.put(we.name.toLowerCase(), we.name)
     labels.put(we.name, we.label)
@@ -161,22 +161,18 @@ class WikiIndex (val realm:String, val fallBacks : List[WikiIndex]) {
     parsed.remove(id)
   }
 
-//  def getByName(name: String) : Option[Any] = withIndex { idx =>
-//    fallBacks.foldLeft(idx.idx.get(name))((x,y) => x orElse y.getByName(name))
-//  }
-
   def containsName(name: String) : Boolean = withIndex { idx =>
-    idx.idx.contains(name) || fallBacks.exists(_.containsName(name))
-  }
+    idx.idx.contains(name)
+  } || fallBacks.exists(_.containsName(name))
 
   def containsLower(name: String)  : Boolean = withIndex { idx =>
-    lower.contains(name) || fallBacks.exists(_.containsLower(name))
-  }
+    lower.contains(name)
+  } || fallBacks.exists(_.containsLower(name))
 
   // TODO stupidest name this month
   def getForLower(name: String) : Option[String] = withIndex { idx =>
-    lower.get(name) orElse mixins.first(_.getForLower(name))
-  }
+    lower.get(name)
+  } orElse mixins.first(_.getForLower(name))
 
   // TODO what's the best way to optimize this - at least track stats and optimize when painful
   // cat can be a comma-sep-list
@@ -186,19 +182,23 @@ class WikiIndex (val realm:String, val fallBacks : List[WikiIndex]) {
     val CATS = cat.split(", ")
     val x = if(cat != "") temp.filter(x=>idx.get1k(x._2).exists(x=>CATS.contains(x.cat))) else temp
     val y = x.take(cnt)
-    y.map(_._2).toList //::: fallBack.map(_.getOptions(str, cnt-temp.size)).getOrElse(Nil)
+    y.values.toList //::: fallBack.map(_.getOptions(str, cnt-temp.size)).getOrElse(Nil)
   }
 
   /** get list of wids that matches the name */
-  def getWids (name:String) : List[WID] = withIndex {idx=>
-    val wids = idx.get1k(name)
-    if(wids.isEmpty) mixins.first(_.getWids(name)) // first or all ???
+  def getWids (name:String) : List[WID] = {
+    val wids = withIndex {idx=>
+      idx.get1k(name)
+    }
+
+    // outisde of the sync block from withIndex
+    if (wids.isEmpty) mixins.first(_.getWids(name)) // first or all ???
     else wids
   }
 
   def label(name: String) : Option[String] = withIndex { idx =>
-    labels.get(name) orElse mixins.first(_.label(name))
-  }
+    labels.get(name)
+  } orElse mixins.first(_.label(name))
 
   /** returns a random WID from index - keep calling until isDefined */
   def random: Option[WID] = withIndex { idx =>
@@ -212,7 +212,7 @@ class WikiIndex (val realm:String, val fallBacks : List[WikiIndex]) {
 
 /** the index is (name, WID, ID) */
 object WikiIndex {
-  def init() = {}
+  def init(): Unit = {}
 
   /** the index is (name, WID, ID) */
   def withIndex[A](realm:String=Wikis.DFLT)(f: TripleIdx[String, WID, ObjectId] => A) =

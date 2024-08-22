@@ -402,6 +402,9 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
               }
             }
 
+            case _ if a.isInstanceOf[AExprIdent] && bs == "msg" =>
+              P.fromTypedValue("", a.asInstanceOf[AExprIdent].exprDot, WTypes.wt.MSG).calculatedTypedValue
+
             case c if ctx.root.domain.exists(_.classes.contains(bu)) => {
               // domain class, base must be json
               if(! ap.isOfType(WTypes.wt.JSON)) {
@@ -1032,5 +1035,4 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
 
   override def getType = a.getType
 }
-
 

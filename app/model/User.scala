@@ -212,11 +212,13 @@ case class User(
     memberReactors
   }
 
-  def memberReactorsWithOrg(realm: String) = {
+  lazy val memberReactorsWithOrg :List[(String,String)] = getmemberReactorsWithOrg()
+
+  def getmemberReactorsWithOrg():List[(String,String)]  = {
     // todo complete this
-        val org = Website
-        .forRealm(realm)
-        .flatMap(_.prop("org"))
+//        val org = Website
+//        .forRealm(realm)
+//        .flatMap(_.prop("org"))
 //        .toList
 //        .flatMap(org =>
     memberReactors.map {r=>

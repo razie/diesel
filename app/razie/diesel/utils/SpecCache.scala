@@ -26,6 +26,9 @@ object SpecCache {
   // cache by page content - so versioning embedded
   private var cachem = new collection.concurrent.TrieMap[String,(DSpec,Option[RDomain])]()
 
+  // cache by wpath only, no content - just to lookup last version
+  private var cachew = new collection.concurrent.TrieMap[String,(DSpec,Option[RDomain])]()
+
   def orcached (we:DSpec, d: =>Option[RDomain]) : Option[RDomain] = {
     // include realm in index so we don't get domains from other realms, very confusing - Domain entities keep refs
     // to original specs - also wpath so if two are identical, there's no confusion...
