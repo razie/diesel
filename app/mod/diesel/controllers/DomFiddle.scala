@@ -7,10 +7,8 @@ import java.util.concurrent.TimeUnit
 import mod.diesel.model.DomEngineHelper
 import org.bson.types.ObjectId
 import org.joda.time.DateTime
-import play.api.Play.current
 import play.api.mvc._
 import razie.diesel.Diesel
-import razie.diesel.dom.RDOM.{P, T}
 import razie.diesel.dom.RDomain.DOM_LIST
 import razie.diesel.dom._
 import razie.diesel.engine.AstKinds._
@@ -25,7 +23,6 @@ import razie.tconf.EPos
 import razie.wiki.{Enc, Services}
 import razie.wiki.admin.Autosave
 import razie.wiki.model._
-import razie.wiki.parser.WAST
 import razie.{CSTimer, Log, Logging, js}
 import scala.collection.concurrent.TrieMap
 import scala.concurrent.ExecutionContext.Implicits.global

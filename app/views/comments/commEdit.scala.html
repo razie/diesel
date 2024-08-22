@@ -8,7 +8,6 @@ comments - edit
 @stok.title("Editing comment")
 
 @import helper.twitterBootstrap._
-@import play.api.Play.current
 @import play.api.i18n.Messages.Implicits._
 
 @Wikis.findSimple(WID("Admin", "CommentEdit").r(stok.realm)).map { we =>

@@ -218,8 +218,6 @@ object Users {
   def updateUser(oldu:User, newu:User): Unit = persist.updateUser(oldu, newu)
   def createUser(newu:User): Unit = persist.createUser(newu)
 
-  import play.api.Play.current
-
   //todo optimize this - cache some users?
   /** display name of user with id, for comments etc */
   def nameOf(uid: ObjectId): String = {

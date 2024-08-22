@@ -388,7 +388,7 @@ class ClubCtl @Inject() (formsCtl:Forms) extends RazController with Logging {
 
 
   def doeClubUpdateRegSettings(club: WID) = FAUR { implicit request =>
-    edRegForm.bindFromRequest()(request.ireq).fold(
+    edRegForm.bindFromRequest()(request.ireq, play.api.data.FormBinding.Implicits.formBinding).fold(
       formWithErrors => ROK.k badRequest { implicit stok =>
         views.html.club.doeClubRegSettings(club, formWithErrors)
       }, {
@@ -920,7 +920,7 @@ class ClubCtl @Inject() (formsCtl:Forms) extends RazController with Logging {
   }
 
   def doeClubActivateHosting1(wid: WID) = RAction { implicit stok =>
-    acthost.bindFromRequest()(stok.ireq).fold(
+    acthost.bindFromRequest()(stok.ireq, play.api.data.FormBinding.Implicits.formBinding).fold(
       formWithErrors => ROK.k badRequest { implicit stok =>
         views.html.club.doeClubActivateHosting(wid, formWithErrors)
       }, {

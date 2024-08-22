@@ -10,8 +10,6 @@ import com.mongodb.DBObject
 import com.mongodb.casbah.Imports._
 import salat._
 import controllers.{VErrors, Validation}
-import play.api.Play.current
-import play.api.cache._
 import razie.audit.Audit
 import razie.db.RazSalatContext._
 import razie.db.{RMany, RazMongo}
@@ -19,7 +17,6 @@ import razie.diesel.dom.WikiDomain
 import razie.hosting.WikiReactors
 import razie.tconf.Visibility.PUBLIC
 import razie.tconf.parser.{BaseAstNode, JMapFoldingContext, LeafAstNode, SpecParserSettings, StrAstNode}
-import razie.wiki.admin.GlobalData
 import razie.wiki.model.features.{WForm, WikiForm}
 import razie.wiki.parser.WAST
 import razie.wiki.util.QueryParms

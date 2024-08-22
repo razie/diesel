@@ -207,9 +207,6 @@ class WikiInstImpl (val realm:String, val fallBacks:List[WikiInst], mkDomain : W
   def labelFor(wid: WID, action: String) =
     category(wid.cat) flatMap (_.contentProps.get("label." + action))
 
-  import play.api.cache._
-  import play.api.Play.current
-
   // this can't be further optimized - it SHOULD lookup the storage, to refresh stuff as well
   def ifind(wid: WID) : Option[com.mongodb.DBObject] = {
     wid.parent.map {p=>
