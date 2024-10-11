@@ -221,6 +221,11 @@ case class WikiEntry(
   override def wvis = props.getOrElse(PROP_WVIS, visibility)
 
   def create(): Unit = {
+
+    // data integrity - we can't handle missing either
+    if(name.trim.length <= 0 || category.trim.length <= 0)
+      throw new IllegalStateException("Wiki cannot be created without a name or a category")
+
     // TODO optimize exists
     if (Wikis.find(wid).exists(_.realm == this.realm)) {
       Log.error("ERR_WIKI page exists " + wid)
@@ -243,6 +248,10 @@ case class WikiEntry(
 
       Wikis(realm).weTable(wid.cat) += grater[WikiEntry].asDBObject(Audit.createnoaudit(neww))
       Wikis.shouldFlag(name, label, content).map(auditFlagged(_))
+
+      if(Wikis(realm).index.withIndex(_.size > 5000))
+        throw new IllegalStateException("Can't have more than 5000 objects in a wiki!")
+
       Wikis(realm).index.create(neww)
     }
   }

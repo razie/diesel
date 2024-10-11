@@ -19,7 +19,7 @@ object MiniScripster extends Logging {
 
   //todo deprecate
   def isfiddleMap(script: String, lang: String, we: Option[WikiEntry], au: Option[WikiUser], q: Map[String, String], typed: Option[Map[String, Any]] = None) =
-    newsfiddleMap(script, lang, we, au, q, typed, false)
+    newsfiddleMap(script, lang, we, au, q, typed, doAudit = false)
 
   /** run a fiddle with a map of arguments "queryParms" */
   // todo protect calls to this
@@ -33,7 +33,7 @@ object MiniScripster extends Logging {
                        doAudit: Boolean = true) = {
     val wix = api.wix(we, au, q, "")
     val c = new CSTimer("script", "?")
-    c.start("MiniScripster.newsfiddleMap")
+    c.start("MiniScripster.newsfiddleMap - lang:"+lang)
 
     if (lang == "js") {
 
@@ -116,7 +116,7 @@ object MiniScripster extends Logging {
   /** simple class filter */
   class MyCF extends ClassFilter {
     override def exposeToScripts(s: String): Boolean = {
-      if (s.startsWith("api." /* WixUtils" */)) true;
+      if (s.startsWith("api" /* WixUtils" */)) true;
       else {
         Audit.logdb("ERR_DENIED", "js class access denied ", s)
         false

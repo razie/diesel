@@ -3,6 +3,7 @@ package mod.diesel.model
 import razie.base.data.TripleIdx
 import razie.js
 import org.json.{JSONArray, JSONObject}
+import razie.wiki.model.{WID, Wikis}
 
 /**
  * Created by raz on 2015-06-09.
@@ -64,4 +65,3 @@ object InMemInventory extends Inventory {
   def path   (realm:String, cat:String, path:String) : List[String] =
     List.empty
 }
-

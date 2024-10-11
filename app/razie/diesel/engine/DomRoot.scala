@@ -264,7 +264,7 @@ trait DomRoot {
                 val av = last.copy(value = None).calculatedTypedValue.asString
                 val m = pa.calculatedTypedValue.value.asInstanceOf[ParmSource]
 //                m.put(P.fromSmartTypedValue(av, rightValue))
-                m.put(rightP.copy(name = av).copyFrom(rightP))
+                m.put(rightP.copy(name = av).copyValueFrom(rightP))
                 rightP.calculatedTypedValue.asNiceString
               }
 

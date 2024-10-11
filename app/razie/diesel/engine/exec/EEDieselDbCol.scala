@@ -149,7 +149,7 @@ class EEDieselMongodDb extends EEDieselDbExecutor("diesel.db.col") {
         val res = RazMongo(TBL).findOne(Map(
           "coll" -> coll,
           "key" -> key,
-        "realm" -> realm
+          "realm" -> realm
         ))
 
         RazMongo(TBL).remove(Map(
@@ -169,7 +169,52 @@ class EEDieselMongodDb extends EEDieselDbExecutor("diesel.db.col") {
         )
       }
 
+      case "log" => {
+        val res = RazMongo(TBL).find(Map(
+          "realm" -> realm
+        ))
+
+        val resList =
+          res.map { x =>
+            val s = x.get("content").toString
+            val m = razie.js.parse(s)
+            m
+          }.toList
+
+        List(
+          EVal(P.fromSmartTypedValue(Diesel.PAYLOAD,
+            Map(
+              "total" -> resList.size,
+              "data" -> resList
+            )
+          ))
+        )
+      }
+
       case "clear" => {
+        val others = in
+            .attrs
+            .filter(_.name != "collection")
+            .filter(_.name != "id")
+            .map(p=>("content." + p.name, p.calculatedValue))
+            .toMap
+
+        val res = RazMongo(TBL).count(Map(
+          "coll" -> coll,
+//          "userId" -> userId,
+          "realm" -> realm
+        ) ++ others)
+
+        RazMongo(TBL).remove(Map(
+          "coll" -> coll,
+//          "userId" -> userId,
+          "realm" -> realm
+        ) ++ others)
+
+        List(EInfo("Deleted "+res+" docs"))
+      }
+
+      case "clearAll" => {
         val others = in
             .attrs
             .filter(_.name != "collection")

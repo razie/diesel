@@ -10,7 +10,7 @@ import razie.diesel.dom.RDOM._
 import razie.diesel.engine.nodes.EMsg
 import razie.tconf.{DSpecInventory, FullSpecRef, SpecRef}
 
-/** default inventory for wiki defined classes */
+/** default inventory for wiki defined categories */
 class DomInvWikiPlugin(
 
   val specInv: DSpecInventory,

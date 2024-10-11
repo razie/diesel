@@ -20,7 +20,7 @@ import scala.collection.mutable
   * this assumes you implemented the inventory rules matching you className,
   * like diesel.inv.impl.listAll
   */
-class DieselRulesInventory(
+class DieselRulesInventory (
   override val name: String = "diesel",
   var props: Map[String, String] = Map.empty
 ) extends DomInventory {
@@ -34,6 +34,24 @@ class DieselRulesInventory(
   var realm: String = ""
   var specInv: Option[DSpecInventory] = None
   var iprops : Map[String,String] = Map.empty
+
+  /**
+    * can this support the class? You can look at it's annotations etc
+    *
+    * You can either use the `diesel.inv.register` message or annotate your known classes withe a
+    * specific annotation like `odata.name` etc
+    */
+  override def isRegisteredFor(realm: String, c: C): Boolean = {
+    // don't need to handle default here - it's handled in findInventoriesForClass
+//    c.props.find(_.name == "inventory").map (inv=>
+      DomInventories.invRegistry.get(realm+"."+c.name).exists(_ == this.name)
+//    ).getOrElse(
+      // default inventory - nothing else must be registered
+//      ! DomInventories.invRegistry.contains(realm+"."+c.name) &&
+//          ! c.stereotypes.contains(razie.diesel.dom.WikiDomain.WIKI_CAT)
+//    )
+  }
+
 
   /** create an instance -  */
   override def mkInstance(irealm: String, ienv:String, wi: DSpecInventory, newName:String, dprops: Map[String, String] = Map.empty): List[DomInventory] = {
@@ -346,6 +364,9 @@ object DieselRulesInventory {
     val ret = new DieselRulesInventory(name)
     ret
   }.toList
+
+  val DEFAULT = "diesel.inv.default"
+  val defaultInv = new DieselRulesInventory(DEFAULT)
 }
 
 //DomInventories.pluginFactories.flatMap(x => x.mkInstance(realm, "", wi, x.name))

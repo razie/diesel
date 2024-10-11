@@ -124,9 +124,25 @@ class DomainController extends RazController with Logging {
       // real wiki Category
         views.html.modules.diesel.catBrowser(pl, co, realm, Wikis(realm).category(cat), cat, base, left, right)(
           mkLink)
-      else
-      // parsed Class from domain
-        views.html.modules.diesel.domCat(realm, cat, base, left, right, o)(mkLink)
+      else {
+        // parsed Class from domain
+
+        // is there a template for it?
+        val otemplate = c.flatMap(c=>Wikis(realm).find("CategoryTemplate", c.name))
+
+        otemplate.filter(x=>o.isDefined).map {t=>
+            // use any drafts to make this simple to develop
+          val c =  (new RazRequest(request)).au.flatMap { u =>
+            Autosave.find("wikie", t.wid.defaultRealmTo(realm),u._id).flatMap(_.get("content"))
+          }
+
+          val newcontent = Wikis.templateSimple(c.getOrElse(t.content), "this.", o.get.toJson)
+
+          views.html.modules.diesel.domCatWithTemplate(realm, cat, base, left, right, o, t, newcontent)(mkLink)
+        }.getOrElse {
+          views.html.modules.diesel.domCat(realm, cat, base, left, right, o)(mkLink)
+        }
+      }
     }
   }
 
@@ -261,7 +277,6 @@ class DomainController extends RazController with Logging {
 
   def domReset = RAction.withAuth {
     implicit stok =>
-      try {
         val realm = stok.realm
         val dom = WikiDomain(realm)
 
@@ -269,19 +284,16 @@ class DomainController extends RazController with Logging {
         dom.addRootIfMissing()
 
         Redirect("/diesel/dom/browse")
-      }
   }
 
   def domBrowseRoot  (format:String="") = RAction.withAuth {
     implicit stok =>
-      try {
         val realm = stok.realm
         val dom = WikiDomain(realm)
 
         dom.addRootIfMissing()
 
         Redirect("/diesel/dom/browse/Domain")
-      }
   }
 
   def domBrowse  (cat:String, path:String="/", plugin:String="", conn:String="", format:String="") = RAction.withAuth {
@@ -408,35 +420,38 @@ class DomainController extends RazController with Logging {
               realm)
           }
 
-        } else if (dom.findInventoriesForClass(c).isEmpty) {
-
-          NotFound(s"Inventory/plugin for realm $realm cat $cat not found")
-
         } else {
+          val invlist = dom.findInventoriesForClass(c)
+          if (invlist.isEmpty) {
 
-          // DOM asset/objec
+            NotFound(s"Inventory/plugin for realm $realm cat $cat not found")
 
-          val p = dom.findInventoriesForClass(c).head
-          val ref = SpecRef.make(stok.realm, p.name, p.conn, cat, "")
-          val res = DomInventories.listAll(ref, start = 0, limit = 100, Array.empty[String])
+          } else {
 
-          val fieldsToShow = c.props.find(_.name == "ui.fieldsToShow").map(_.currentStringValue).getOrElse("").split(
-            ",")
+            // DOM asset/objec
 
-          // todo find tags for assets
+            val p = invlist.head
+            val ref = SpecRef.make(stok.realm, p.name, p.conn, cat, "")
+            val res = DomInventories.listAll(ref, start = 0, limit = 100, Array.empty[String])
+
+            val fieldsToShow = c.props.find(_.name == "ui.fieldsToShow").map(_.currentStringValue).getOrElse("").split(
+              ",")
+
+            // todo find tags for assets
 //      val tags = wl.flatMap(_.tags).filter(_ != Tags.ARCHIVE).filter(_ != "").groupBy(identity).map(
 //        t => (t._1, t._2.size)).toSeq.sortBy(_._2).reverse
 
-          ROK.k.withErrors(res.errors) reactorLayout12 {
-            views.html.wiki.wikiListAssets(cat, "", cat, res,
-              Nil, "./", "", realm, fieldsToShow)
+            ROK.k.withErrors(res.errors) reactorLayout12 {
+              views.html.wiki.wikiListAssets(cat, "", cat, res,
+                Nil, "./", "", realm, fieldsToShow)
+            }
           }
         }
       } catch {
         case t:Throwable =>
           // it'll say "nothing known about"
-          catBrowser("", "", stok.realm, cat, path, None).apply(
-            stok.ireq.asInstanceOf[Request[AnyContent]]).value.get.get
+            catBrowser("", "", stok.realm, cat, path, None, errors = List(t.toString)).apply(
+              stok.ireq.asInstanceOf[Request[AnyContent]]).value.get.get
       }
   }
 

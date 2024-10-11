@@ -119,6 +119,14 @@ case class DomAst(
   }
 
   /** SPECIAL: NO EVENTS generated - use carefully */
+  def appendVerbose(m: ETrace): Unit = {
+    this.appendAllNoEvents(
+      List(
+        DomAst(m, AstKinds.VERBOSE).withStatus(DomState.SKIPPED)
+      ))
+  }
+
+  /** SPECIAL: NO EVENTS generated - use carefully */
   def appendAllNoEvents(other: List[DomAst]): Unit = {
     this.childrenCol.appendAll(other)
     other.foreach(_.withParent(this))

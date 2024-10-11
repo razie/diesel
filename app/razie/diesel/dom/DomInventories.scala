@@ -6,7 +6,7 @@
 package razie.diesel.dom
 
 import org.json.JSONObject
-import razie.diesel.Diesel
+import razie.diesel.{Diesel, dom}
 import razie.diesel.dom.RDOM._
 import razie.diesel.engine.{DomEngECtx, DomEngineSettings}
 import razie.diesel.engine.nodes.{EMsg, flattenJson}
@@ -37,6 +37,7 @@ object DomInventories extends razie.Logging {
         new DieselRulesInventory() ::
         new DieselInternalInventory() ::
         new DomInvWikiPlugin(null, "", "", "") ::
+        new DomWikiJSONInventory() ::
         Nil
 
   /**
@@ -88,14 +89,21 @@ object DomInventories extends razie.Logging {
 
   /** aggregate applicable actions on element in realm's plugins */
   def htmlActions(realm: String, c: DE, ref:Option[FullSpecRef]) = {
-    val s = WikiDomain(realm)
-        .findInventoriesForClass(c)
+    val oinv = WikiDomain(realm).findInventoriesForClass(c)
+    val s = oinv
         .foldLeft("")(
-          (a, b) => a + (if (a != "") " <b>|</b> " else "") + b.htmlActions(c, ref)
-        )
+          (a, b) => a + (if (a != "") " <b>|</b> " else "") + b.htmlActions(c, ref) +
+      s"""
+        |<span
+        |  class="glyphicon glyphicon-info-sign"
+        |  title="Inventory: ${b.name}"></span>
+        |</a></small>
+        |""".stripMargin
+
+    )
 
     // todo add an info question mark popup to prompt them to read about inventoryies and assets etc
-    if (s.trim.isEmpty)
+    if (s.trim.isEmpty || oinv.find(_.isInstanceOf[dom.DieselRulesInventory]).exists(_.asInstanceOf[DieselRulesInventory].name == DieselRulesInventory.DEFAULT))
       """
         |<small><i><span style="color:red">no inventory registered</span></i>
         |<a href="/Topic/Assets,_Entities_and_Inventories">
@@ -103,7 +111,7 @@ object DomInventories extends razie.Logging {
         |  class="glyphicon glyphicon-info-sign"
         |  title="Read more about inventories"></span>
         |</a></small>
-        |""".stripMargin
+        |""".stripMargin + s
     else s
   }
 
@@ -250,7 +258,9 @@ object DomInventories extends razie.Logging {
           val oname = invClsName
 
           c.parms.find(_.name == kn).map { cp =>
-            cp.copy(dflt = value) // todo add PValue
+//            cp.copy(dflt = value) // todo add PValue
+//            cp.withValue(value)
+            P.fromTypedValue(cp.name, value, cp.ttype) // doesn't copy annot, expr etc - simplifies view
           } getOrElse {
             // key refs
             if (kn.startsWith("_") && kn.endsWith(("_value"))) {
@@ -541,7 +551,7 @@ object DomInventories extends razie.Logging {
         .filter(p => !origMap.exists(_._1 == p.name))
 
     val newMap = if (defaulted.isEmpty) Nil else {
-      val newCtx = new StaticECtx(origMap.map(t => t._2.copy(name = t._1).copyFrom(t._2)), Option(ctx))
+      val newCtx = new StaticECtx(origMap.map(t => t._2.copy(name = t._1).copyValueFrom(t._2)), Option(ctx))
 
       defaulted
           .map(p => p.calculatedP(ctx = newCtx))
@@ -557,7 +567,7 @@ object DomInventories extends razie.Logging {
         .flatMap(_.parms.filter(_.stereotypes.contains("excache")))
 
     val newMap = if (list.isEmpty) Nil else {
-      val newCtx = new StaticECtx(thiss :: origMap.map(t => t._2.copy(name = t._1).copyFrom(t._2)), Option(ctx))
+      val newCtx = new StaticECtx(thiss :: origMap.map(t => t._2.copy(name = t._1).copyValueFrom(t._2)), Option(ctx))
 
       list
           .map(p => p.calculatedP(ctx = newCtx))

@@ -220,6 +220,7 @@ object Diesel {
         if(WTypes.STRING.equalsIgnoreCase(p.ttype.name) ||
             WTypes.REGEX.equalsIgnoreCase(p.ttype.name) ||
             WTypes.UNKNOWN.equalsIgnoreCase(p.ttype.name) ||
+            WTypes.URL.equalsIgnoreCase(p.ttype.name) ||
             p.ttype.name == "")
             s"""${p.name} </td>\n  <td> {{f:${p.name}:}}"""
         else if(WTypes.NUMBER.equalsIgnoreCase(p.ttype.name) ||

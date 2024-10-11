@@ -56,6 +56,8 @@ object WTypes {
 
     final val UNKNOWN = WType("")
 
+    final val URL = WType("URL")
+
     final val MSG = WType("Msg")   // a message (to call)
     final val FUNC = WType("Func") // a function (to call)
 
@@ -95,6 +97,8 @@ object WTypes {
 
   final val EXCEPTION = "Exception"
   final val ERROR = "Error"
+
+  final val URL = "URL"
 
   final val UNKNOWN = ""
 
@@ -148,7 +152,7 @@ object WTypes {
 
   val PRIMARY_TYPES = Array(
     NUMBER , STRING , DATE , REGEX , INT , FLOAT , BOOLEAN , REF , RANGE, ARRAY, HTML, XML, JSON,
-    SOURCE, BYTES, EXCEPTION, DOMAIN, ERROR, MSG, FUNC, CLASS
+    SOURCE, BYTES, EXCEPTION, DOMAIN, ERROR, MSG, FUNC, CLASS, URL
   )
 
   /** get corresponding mime content-type */

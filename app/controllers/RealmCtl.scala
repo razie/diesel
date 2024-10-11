@@ -94,7 +94,7 @@ class Realm extends RazController with Logging {
           val label = page s "label"
           val tm = page s "template"
           val tags = (cat.toLowerCase :: (page s "tags").split(",").toList).distinct
-          val co = Wikis.template(tm, parms)
+          val co = Wikis.templateDouble(tm, parms)
           WikiEntry(cat, name, label, "md", co, au._id, tags.distinct.toSeq, name, 1, wid.parent,
             Map("owner" -> au.id,
               WikiEntry.PROP_WVIS -> Visibility.MODERATOR))
@@ -113,26 +113,26 @@ class Realm extends RazController with Logging {
         // if the main page doesn't have a custom template, use a default
         val weCo =
           if ("Reactor" == cat && templateWpath.endsWith("#form"))
-            Wikis.template(templateWpath, parms) // use the form that captured it
+            Wikis.templateDouble(templateWpath, parms) // use the form that captured it
           else if("Spec" == torspec) {
             // for Specs, if there is a template, use it - otherwise just include the form
             tw.sections.find(_.name == "template").map {sec=>
               if(templateWpath.endsWith("#form"))
                 "[[template:"+templateWpath.replaceFirst("#form$", "#template") +"]]\n" // for Specs - just include the form...
               else
-                Wikis.template(templateWpath+"#template", parms)
+                Wikis.templateDouble(templateWpath+"#template", parms)
             } getOrElse "[[include:"+templateWpath+"]]\n" // for Specs - just include the form...
           }
           else if("Template" == torspec) {
             tw.sections.find(_.name == "template").map {sec=>
               if(templateWpath.endsWith("#form"))
-                Wikis.template(templateWpath.replaceFirst("#form$", "#template"), parms)
+                Wikis.templateDouble(templateWpath.replaceFirst("#form$", "#template"), parms)
               else
-                Wikis.template(templateWpath+"#template", parms)
+                Wikis.templateDouble(templateWpath+"#template", parms)
             } getOrElse "[[include:"+templateWpath+"]]\n" // for Specs - just include the form...
           }
         else
-          Wikis.template(s"Category:$cat#template", parms) // last ditch attempt to find some overrides
+          Wikis.templateDouble(s"Category:$cat#template", parms) // last ditch attempt to find some overrides
 
         var we = WikiEntry(wid.cat, wid.name, s"$name", "md", weCo, au._id, Seq(), realm, 1, wid.parent,
         Map("owner" -> au.id,
@@ -337,7 +337,7 @@ class Realm extends RazController with Logging {
           val name = page s "name"
           val label = page s "label"
           val tm = page s "template"
-          val co = Wikis.template(tm, parms)
+          val co = Wikis.templateDouble(tm, parms)
           // if page with same exists, forget it (make sure it didn't fallback to another realm)
           if(WID(cat,name).r(realm).page.exists(_.realm == realm)) Nil
           else List(WikiEntry(cat, name, label, "md", co, au._id, Seq(), realm, 1, None,

@@ -64,7 +64,7 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
     Services.wikiAuth.canEdit(wid, u, w, props)(errCollector)
 
   /** display the play sfiddle screen */
-  def playDom(iSpecWpath:String, iStoryWpath:String, line:String, col:String, refreshing:String) = FAUR { implicit stok =>
+  def playDom(iSpecWpath:String, iStoryWpath:String, line:String, col:String, refreshing:String, runNow:String) = FAUR { implicit stok =>
     val reactor = stok.realm
 
     //1. which wids were you looking at last?
@@ -133,7 +133,8 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
         wp,
         line,
         col,
-        refreshing)
+        refreshing,
+        runNow.trim.toLowerCase)
     }
   }
 

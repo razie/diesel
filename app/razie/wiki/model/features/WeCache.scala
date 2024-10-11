@@ -13,7 +13,7 @@ import scala.collection.mutable.ListBuffer
   * todo statics are bad, eh? to keep instance per WikiInst
   */
 object WeCache {
-  var loading=false
+  @volatile var loading=false
   var maxRecs = 500
 
   private var pre  = new ListBuffer[WikiEntry]()

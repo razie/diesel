@@ -1,0 +1,64 @@
+@**************
+browse a domain
+**************@
+@import razie.diesel.dom.RDOM
+@import play.twirl.api.TemplateMagic.defining
+@import razie.wiki.model.WikiEntry
+@(realm:String, cat:String, middle:List[String], left:List[RDOM.A], right:List[RDOM.A], o:Option[RDOM.O]=None, template:WikiEntry, content:String)(mkLink:(String,String,Option[RDOM.A])=>String)(implicit stok: controllers.StateOk)
+@import razie.diesel.dom.DomInventories
+@import razie.diesel.dom.WikiDomain
+
+@stok.title("Category browser: "+cat)
+
+<script src="@routes.Assets.at("javascripts/weDieselDom.js")"></script>
+
+@modules.diesel.browser("diesel", realm, realm, cat, middle, left, right)(mkLink)
+
+<div class="col-sm-12">
+@defining(WikiDomain(realm)) { wd =>
+  @wd.rdom.classes.get(cat).map { c =>
+    @defining(wd.findInventoriesForClass(c)) { inv =>
+
+        @** it's a proper class, format nice generic object view *@
+
+        @** actions *@
+
+      <div align="right">
+        <div class="pull-left"><small><a href="/wikie/edit/@{template.wid.wpath}"><span class="glyphicon glyphicon-edit"></span></a></small></div>
+        <small>@Html(DomInventories.htmlActions(realm, c, o.flatMap(_.ref)))</small></div>
+
+      <div class="well">
+        @** body of object *@
+@**
+      @Html(o.map(_.fullHtml(inv.headOption)).getOrElse(c.fullHtml(inv.headOption)))
+*@
+        @wiki.wikiFrag(template.wid,Some(content),true,Some(template), None, true, false)
+      </div>
+    @wiki.wikiAddMore(razie.wiki.model.WID("Category", cat).r(realm), None)
+
+    } @* defining *@
+  }.getOrElse{
+
+    @if(WikiDomain.isPrimaryType(cat)) {
+    Class <b>@cat</b> is a primary type (built-in).
+      <br>
+    <br>
+    } else {
+    <span style="color:red">(realm: @realm) Absolutely nothing known about <b>@cat</b> - it is most likely inferred! </span>
+      <p>
+        You can either create a
+          <a href="/wikie/edit/@{realm}.Category:@cat">Wiki Category for <b>@cat</b></a> OR declare it in a DSL domain modelling topic.
+      </p>
+    <div class="alert alert-warning">
+      For <a href="/Topic/Domain_Modelling">domain modelling</a>, make sure the topic containing the models is tagged "DslDomain", to have it loaded automatically!
+    </div>
+    }
+  }
+}
+
+</div>
+
+<small>object:@o.isDefined</small>
+
+@util.oneModal()
+

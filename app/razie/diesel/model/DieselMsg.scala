@@ -353,6 +353,7 @@ object DieselMsg {
 
     final val TEXT_FILE = "diesel.io.textFile"
     final val LIST_FILES = "diesel.io.listFiles"
+    final val LIST_DIRS = "diesel.io.listDirectories"
     final val CAN_READ = "diesel.io.canRead"
   }
 

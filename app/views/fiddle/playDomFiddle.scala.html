@@ -20,7 +20,8 @@ a JS with HTML and CSS fiddle
     wpath:String,
     line:String,
     col:String,
-    refreshing:String
+    refreshing:String,
+    runNow:String
     )(implicit stok:controllers.StateOk)
 
 <div style="margin-left: 20px; margin-right: 20px">
@@ -353,6 +354,7 @@ $('#sketchMode, #mockMode, #blenderMode, #draftMode, #realTime').change(function
   runpill2('@{id}', false);
 });
 
+
 function errMsg(text) {
   $('#errMsg').html('<strong>'+text+'</strong>');
   $('#errMsg').show();
@@ -608,7 +610,13 @@ var runpill = function(id) {
   });
 }
 
-/** run the fiddle */
+/** run the fiddle
+ *
+ * param id
+ * param compileOnly
+ * param forceRT
+ * param next
+ */
 var runpill2 = function(id, compileOnly, forceRT, next) {
   var noSim = !(forceRT || false);
   runFiddleStoryUpdated({
@@ -1384,7 +1392,15 @@ razOnLoad (function() {
   </script>
 }
 
-</div>
+@if("yes" == runNow) {
+  <script>
+  setTimeout(function(){
+    if(! $('#realTime').prop('checked')) runpill2('@{id}', false, true);
+  }, 500);
+  </script>
+};
+
+      </div>
 
 @util.oneModal()
 

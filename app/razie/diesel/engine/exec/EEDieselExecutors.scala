@@ -146,21 +146,15 @@ class EEDieselExecutors extends EExecutor("diesel.props") {
       case DieselMsg.IO.LIST_FILES => {
 
         val result = ctx.get("result").getOrElse(Diesel.PAYLOAD)
-        val name = ctx.getRequired("path")
+        val path = ctx.getRequired("path")
+        list(path, result, dirs = false)
+      }
 
-        val m = if (Services.config.isLocalhost) {
-          val f = new File(name)
-          val l = f.list()
-          val res = new ListBuffer[String]()
-          if (l != null) res.appendAll(l) // jesus - one of those APIs...
-          res.toList
-        } else {
-          throw new DieselException("Error: No permission")
-        }
+      case DieselMsg.IO.LIST_DIRS => {
 
-        List(
-          EVal(P.fromTypedValue(result, m))
-        )
+        val result = ctx.get("result").getOrElse(Diesel.PAYLOAD)
+        val path = ctx.getRequired("path")
+        list(path, result, dirs = true)
       }
 
       case DieselMsg.IO.CAN_READ => {
@@ -243,6 +237,23 @@ class EEDieselExecutors extends EExecutor("diesel.props") {
       }
     }
   }
+
+  def list (path:String, result:String, dirs:Boolean) = {
+    val m = if (Services.config.isLocalhost) {
+      val f = new File(path)
+      val l = f.listFiles()
+      val res = new ListBuffer[String]()
+      if (l != null) res.appendAll(l.filter(f=> if(dirs) f.isDirectory else f.isFile).map(_.getName)) // jesus - one of those APIs...
+      res.toList
+    } else {
+      throw new DieselException("Error: No permission")
+    }
+
+    List(
+      EVal(P.fromTypedValue(result, m))
+    )
+  }
+
 
   override def toString = "$executor::diesel.props "
 

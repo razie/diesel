@@ -7,20 +7,20 @@
 package razie.diesel.dom
 
 import razie.diesel.cron.DieselCron
-import razie.diesel.dom
 import razie.diesel.dom.RDOM.P.asString
 import razie.diesel.dom.RDOM._
-import razie.diesel.engine.{DieselAppContext, DomStream}
+import razie.diesel.engine.DieselAppContext
 import razie.diesel.engine.nodes.EMsg
-import razie.diesel.expr.{DieselExprException, ECtx}
-import razie.diesel.model.DieselTarget
-import razie.tconf.{DSpecInventory, FullSpecRef, SpecRef, TagQuery}
+import razie.diesel.expr.DieselExprException
+import razie.tconf.{DSpecInventory, FullSpecRef, SpecRef}
 import razie.wiki.Services
-import razie.{Snakk, js}
 import scala.collection.mutable
-import services.DieselCluster
 
-/** based on diesel rules domain plugin */
+/** inventory for internal diesel objects: crons etc
+  *
+  * @param name
+  * @param props
+  */
 class DieselInternalInventory(
   override val name: String = "diesel.internal",
   var props: Map[String, String] = Map.empty

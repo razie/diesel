@@ -209,18 +209,6 @@ abstract class WikiConfig {
   /** generic site configuration */
   def sitecfg(parm: String) = config(SITECFG) flatMap (_.get(parm))
 
-  /** @obsolete find the realm from the request parameters - hostport or forwarded-for or something */
-  def xrealm(implicit request: Request[_]) = {
-    if(request.host contains "localhost") WikiConfig.RK else {
-      config("realm").map { m =>
-        PlayTools.getHost match {
-          case Some(x) if m contains x => m(x)
-          case _ => WikiConfig.RK
-        }
-      } getOrElse WikiConfig.RK
-    }
-  }
-
   /** deprecated - use Website.usetTypes instead */
   def userTypes  = {
       config(USERTYPES).toList.flatMap(_.keys.toList)

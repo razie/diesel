@@ -596,7 +596,7 @@ class DomGuard extends DomApiBase with Logging {
     }
   }
 
-  /** status badge for all realms */
+  /** status badge for all realms - admins can see this */
   def dieselGuardStatusAll = Filter(activeUser).async { implicit stok =>
     val t = (0, 0, 0L)
 
