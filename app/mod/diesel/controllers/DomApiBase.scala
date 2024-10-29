@@ -25,7 +25,7 @@ class DomApiBase extends mod.diesel.controllers.SFiddleBase  with Logging {
   }
 
   /** list cats */
-  def domListCat(cat: String, reactor: String) = FAUR { implicit stok =>
+  def domListCat(cat: String, reactor: String, selected:String) = FAUR { implicit stok =>
     val what = cat.toLowerCase
     val names = Wikis(reactor).pageNames(cat).toList.sorted
 
@@ -48,7 +48,17 @@ class DomApiBase extends mod.diesel.controllers.SFiddleBase  with Logging {
           ).getOrElse("<td></td>") + "</tr>"
 //        ).mkString("<br>") +
         )
-          ).mkString("""<table class="table table-condensed">""", "", "</table>")
+          ).mkString("""<table class="table table-condensed">""", "", "</table>") +
+          s"""<script>
+             |$$( "#oneModal" ).on('shown', function(){
+             |  $$('.modal-body').scrollTop($$("td:contains('${selected}')").parent('tr').offset().top - $$('.modal-body').height()/2);
+             |});
+             |</script>""".stripMargin
+//      s"""<script>
+//         |setTimeout(function(){
+//         |  $$('.modal-body').scrollTop($$("td:contains('${selected}')").parent('tr').offset().top - $$('.modal-body').height()/2);
+//         |}, 200);
+//        |</script>""".stripMargin
     )
   }
 

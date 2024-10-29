@@ -5,6 +5,7 @@
  */
 package razie.diesel.engine.exec
 
+import api.{SftpClientBridge, SshClient}
 import com.razie.pub.comms.{CommRtException, Comms}
 import java.net.{URI, URL}
 import razie.Log.log
@@ -20,7 +21,7 @@ import razie.diesel.expr.{ECtx, SimpleExprParser}
 import razie.diesel.snakk.FFDPayload
 import razie.hosting.Website
 import razie.tconf.{DTemplate, EPos}
-import razie.wiki.Enc
+import razie.wiki.{Enc, Sec}
 import razie.wiki.model.WID
 import razie.{Logging, Snakk, js}
 import scala.Option.option2Iterable
@@ -36,23 +37,32 @@ class EESnakk extends EExecutor("snakk") with Logging {
 
   /** can I execute this task? */
   override def test(ast: DomAst, m: EMsg, cole: Option[MatchCollector] = None)(implicit ctx: ECtx) = {
-    def known(s: String) =
+    def known(s: String) = {
       (s contains "GET") ||
           (s contains "PATCH") ||
           (s contains "POST") ||
           (s contains "TELNET") ||
           (s contains "HTTP")
+    }
 
-    // snakk messages
-    m.ea == "snakk.json" ||
+    // todo why do i check each? do i allow client to define snakk.X ?
+    m.ea == "snakk.ping" ||
+    m.ea == "snakk.ssh" ||
+        m.ea == "snakk.rsh" ||
+        m.ea == "snakk.sftp.download" ||
+        m.ea == "snakk.sftp.delete" ||
+        m.ea == "snakk.sftp.upload" ||
+        m.ea == "snakk.sftp.list" ||
+        m.ea == "snakk.sftp.listDir" ||
+        m.ea == "snakk.json" ||
         m.ea == "snakk.xml" ||
         m.ea == "snakk.text" ||
         m.ea == "snakk.telnet" ||
         m.ea == "snakk.ffd" ||
         m.ea == "snakk.ffdFormat" ||
         m.ea == "snakk.parse.xml"   ||
-    m.ea == "snakk.parse.json"  ||
-    m.ea == "snakk.parse.regex" ||
+        m.ea == "snakk.parse.json"  ||
+        m.ea == "snakk.parse.regex" ||
     // and also if the stypes are known and there are templates for them
     known(m.stype) ||
       spec(m).exists(m => known(m.stype) ||
@@ -124,6 +134,15 @@ class EESnakk extends EExecutor("snakk") with Logging {
     m
   }
 
+  /** invoke and measure duration, add it as info */
+  def addDuration (f: => InfoAccumulator) = {
+    val startMillis = System.currentTimeMillis()
+    val res: InfoAccumulator = f
+    val durationMillis = System.currentTimeMillis() - startMillis
+    res += EDuration(durationMillis)
+    res.eres
+  }
+
   /** execute the snakk task then */
   override def apply(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any] = {
 
@@ -136,11 +155,26 @@ class EESnakk extends EExecutor("snakk") with Logging {
     else if (in.ea == "snakk.ffdFormat")
       return formatFfd(in, destSpec)
     else if (in.ea == "snakk.sftp.upload")
-      return sftpUpload(in, destSpec)
+      return addDuration(EESnakkSsh.sftpUpload(in, destSpec))
     else if (in.ea == "snakk.sftp.download")
-      return sftpDownload(in, destSpec)
+      return addDuration(EESnakkSsh.sftpDownload(in, destSpec))
+    else if (in.ea == "snakk.sftp.delete")
+      return addDuration(EESnakkSsh.sftpDelete(in, destSpec))
+    else if (in.ea == "snakk.sftp.list" || in.ea == "snakk.sftp.listDir")
+      return addDuration(EESnakkSsh.sftpList(in, destSpec, in.ea))
+    else if (in.ea == "snakk.ssh")
+      return addDuration(EESnakkSsh.ssh(in, destSpec, "exec"))
+    else if (in.ea == "snakk.rsh")
+      return addDuration(EESnakkSsh.ssh(in, destSpec, "shell"))
+    else if (in.ea == "snakk.ping") {
+      var eres = new InfoAccumulator()
+      val sc = scFromMsgTelnet(in.attrs)
+      val res = sc.ping(ctx.getRequired("host"), Some(eres))
+      eres.append(new EVal (P.fromTypedValue("payload", res)))
+      return addDuration(eres)
+    }
 
-    // for all other snakk.xxx calls
+    // for all other snakk.xxx calls - continue below
 
     var filteredAttrs = in.attrs.filter(_.name != SNAKK_HTTP_OPTIONS)
 
@@ -206,7 +240,7 @@ class EESnakk extends EExecutor("snakk") with Logging {
                   filteredAttrs,
               Some(ctx)),
             (
-                sc.headers ++ {
+                sc.headerMap ++ {
                   ctx.curNode.map(node =>
                     ("dieselNodeId" -> node.id)).toList.filter(x => !sc.headers.contains("dieselNodeId")) ++
                       ctx.root.asInstanceOf[DomEngECtx].settings.userId.map(x =>
@@ -231,6 +265,8 @@ class EESnakk extends EExecutor("snakk") with Logging {
 //          eres += EInfo("Snakking " + x.toString, Enc.escapeHtml(trimmed(sc.toCurl))).withPos(pos)
           eres += EInfo("Snakking " + x.toString).withPos(pos)
           eres += new EVal(P.fromTypedValue("snakkCurl", trimmed(sc.toCurl))).withKind(AstKinds.DEBUG)
+
+          info("snakkCurl: " + sc.toCurl)
 
           response = sc.body // make the call
 
@@ -850,50 +886,6 @@ object EESnakk {
       output.toList.map(name=>new P(name, res)) :::
         EVal(new P(PAYLOAD, res)) :: Nil
     } ::: results.getErrors.map(x=> EError("FFD Err: " + x))
-  }
-
-  private def setupJsch (host:String, port:String, user:String, pwd:String) = {
-//    val jsch = new Nothing
-//    jsch.setKnownHosts("/Users/john/.ssh/known_hosts")
-//    val jschSession = jsch.getSession(username, remoteHost)
-//    jschSession.setPassword(password)
-//    jschSession.connect
-//    jschSession.openChannel("sftp").asInstanceOf[Nothing]
-  }
-
-  /** upload sftp
-    *
-    * $msg snakk.sftp.upload (host, port, user, pwd, file)
-    */
-  def sftpUpload(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any] = {
-    val host = ctx.getRequired("host")
-    val port = ctx.getRequired("port")
-    val user = ctx.getRequired("user")
-    val pwd = ctx.getRequired("pwd")
-
-
-//    val results = new FFDPayload("", schema.mkString).build(ctx)
-
-//    results.getResult.toList.flatMap {res=>
-//      output.toList.map(name=>new P(name, res)) :::
-//          EVal(new P(PAYLOAD, res)) :: Nil
-//    } ::: results.getErrors.map(x=> EError("FFD Err: " + x))
-  Nil
-  }
-  def sftpDownload(in: EMsg, destSpec: Option[EMsg])(implicit ctx: ECtx): List[Any] = {
-    val host = ctx.getRequired("host")
-    val port = ctx.getRequired("port")
-    val user = ctx.getRequired("user")
-    val pwd = ctx.getRequired("pwd")
-
-
-//    val results = new FFDPayload("", schema.mkString).build(ctx)
-
-//    results.getResult.toList.flatMap {res=>
-//      output.toList.map(name=>new P(name, res)) :::
-//          EVal(new P(PAYLOAD, res)) :: Nil
-//    } ::: results.getErrors.map(x=> EError("FFD Err: " + x))
-    Nil
   }
 
   override def toString = "$executor::snakk "

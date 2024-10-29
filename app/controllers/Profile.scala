@@ -318,7 +318,8 @@ s"$server/oauth2/v1/authorize?client_id=0oa279k9b2uNpsNCA356&response_type=token
         }
 
         // allow this only for some minutes
-        if (System.currentTimeMillis - g <= 120000) {
+        val millis = System.currentTimeMillis - g
+        if (millis <= 120000) {
           login(reg.email, reg.password, request.session.get("extra").mkString)
         } else {
           Msg2(

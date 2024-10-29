@@ -14,6 +14,7 @@ import razie.db.RazMongo
 import razie.db.RazSalatContext._
 import razie.diesel.engine.DieselAppContext
 import razie.diesel.model.{DieselMsg, DieselMsgString, DieselTarget, ScheduledDieselMsg, ScheduledDieselMsgString}
+import razie.hosting.WikiReactors.loadReactor
 import razie.tconf.hosting.Reactors
 import razie.wiki.admin.GlobalData
 import razie.wiki.model._
@@ -154,14 +155,34 @@ object WikiReactors extends Logging with Reactors {
     }
     if(toload contains WIKI) loadReactor(WIKI)
 
-    // todo this will create issues such that for a while after startup things are weird
+    synchronized {
+      try {
+        // the basic were already loaded, will be ignored
+        Audit.logdb("DEBUG", "PRE-Loading reactors " + Thread.currentThread().getName)
+
+        toload.foreach(loadReactor(_, None))
+
+       // after loading reactors, load index and domain for each
+        toload.foreach {r=>
+          reactors(r).wiki.index.withIndex{i => 3}
+          reactors(r).wiki.domain.rdom
+        }
+
+      } catch {
+        case t: Throwable =>
+          error("while loading reactors", t)
+          Audit.logdb("DEBUG-ERR", "EXCEPTION loading reactors " + t)
+      }
+
+      Audit.logdb("DEBUG", "DONE PRE-Loaded reactors " + Thread.currentThread().getName)
+    }
+
+      // todo this will create issues such that for a while after startup things are weird
     razie.Threads.fork {
       synchronized {
         try {
           // the basic were already loaded, will be ignored
-          Audit.logdb("DEBUG", "Loading reactors " + Thread.currentThread().getName)
-
-          toload.foreach(loadReactor(_, None))
+          Audit.logdb("DEBUG", "Loading all reactors " + Thread.currentThread().getName)
 
           // now load the rest - speed up in razdevmod e
           if( ! Services.config.isRazDevMode) {
@@ -174,7 +195,7 @@ object WikiReactors extends Logging with Reactors {
             Audit.logdb("DEBUG-ERR", "EXCEPTION loading reactors " + t)
         }
 
-        Audit.logdb("DEBUG", "DONE Loaded reactors " + Thread.currentThread().getName)
+        Audit.logdb("DEBUG", "DONE Loaded all reactors " + Thread.currentThread().getName)
 
       }
       // all loaded - start other problematic services

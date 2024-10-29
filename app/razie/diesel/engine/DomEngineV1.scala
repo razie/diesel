@@ -60,18 +60,31 @@ class DomEngineV1 (
   protected override def expand(a: DomAst, recurse: Boolean = true, level: Int): List[DEMsg] = {
     var msgs : List[DEMsg] = Nil // continuations from this cycle
 
-    if (level >= maxLevels) {
-      evAppChildren(a,
+    // link the spec - some messages get here without a spec, because the DOM is not available when created
+    if (a.value.isInstanceOf[EMsg] && a.value.asInstanceOf[EMsg].spec.isEmpty) {
+      val m = a.value.asInstanceOf[EMsg]
+      dom.moreElements.collect {
+        case s: EMsg if s.entity == m.entity && s.met == m.met => m.withSpec(Some(s))
+      }.headOption
+    }
+
+    // +10 because it should normally fail in ruleDecomp first - see there
+    if (level >= maxLevels+10) {
+      if(findParentWith(a, _.tailrec).isDefined) {
+//        trace("ignoring @tailrec")
+      } else {
+        evAppChildren(a,
         DomAst(
           TestResult(
-            "fail: maxLevels!", "You have a recursive rule generating this branch..."),
+            "fail: maxLevels!", "b.You have a recursive rule generating this branch - if it's ok, then set `diesel.levels(max=100)`"),
           "error"))
       evAppChildren(a,
         DomAst(
           EMsg("diesel", "throw",
             List(new P("error", s"Recursive rule (maxLevels=$maxLevels)"))
           )))
-      return Nil
+        return Nil
+      }
     }
 
     if (this.curExpands > maxExpands && !Services.config.isLocalhost) {
@@ -80,14 +93,6 @@ class DomEngineV1 (
         TestResult(
           "fail: maxExpands!", s"You have expanded too many nodes (>$maxExpands)..."), "error")
       return Nil //stopNow
-    }
-
-    // link the spec - some messages get here without a spec, because the DOM is not available when created
-    if(a.value.isInstanceOf[EMsg] && a.value.asInstanceOf[EMsg].spec.isEmpty) {
-      val m = a.value.asInstanceOf[EMsg]
-      dom.moreElements.collect {
-        case s: EMsg if s.entity == m.entity && s.met == m.met => m.withSpec(Some(s))
-      }.headOption
     }
 
     a.value match {
@@ -450,7 +455,7 @@ class DomEngineV1 (
           }
 
           // run the mock
-          newNodes = newNodes ::: ruleDecomp(a, n, m.rule, ctx)
+          newNodes = newNodes ::: ruleDecomp(level, a, n, m.rule, ctx)
         }
       }
     }
@@ -600,7 +605,7 @@ class DomEngineV1 (
             }
           }
 
-        if(allowed)  newNodes = newNodes ::: ruleDecomp(a, n, r, ctx)
+        if(allowed)  newNodes = newNodes ::: ruleDecomp(level, a, n, r, ctx)
         }
       }
     }
@@ -779,11 +784,31 @@ class DomEngineV1 (
   }
 
   /** reused - execute a rule */
-  private def ruleDecomp (a:DomAst, in:EMsg, r:ERule, parentCtx:ECtx) = {
+  private def ruleDecomp (level: Int, a:DomAst, in:EMsg, r:ERule, parentCtx:ECtx) : List[DomAst] = {
     var result: List[DomAst] = Nil
     implicit val ctx: ECtx = new StaticECtx(in.attrs, Some(parentCtx), Some(a))
 
     val parents = new collection.mutable.HashMap[Int, DomAst]()
+
+    val tailrec = (r.arch contains "tailrec")
+
+    if (level >= maxLevels) {
+      // if annotated with tail rec, we'll leave it
+      if (findParentWith(a, _.tailrec).isDefined) {
+        if(tailrec) {
+          evAppChildren(a,
+            DomAst(EInfo("Ignoring @tailrec when maxLevels reached"), AstKinds.DEBUG))
+          trace("Ignoring @tailrec")
+        }
+      } else {
+        evAppChildren(a,
+          DomAst(
+            TestResult(
+              "fail: maxLevels!", "a.You have a recursive rule. use<tailrec> or set `diesel.levels(max=100)`"),
+            "error"))
+        return Nil
+      }
+    }
 
     //todo used to set kind to generated but parent makes more sense.getOrElse(AstKinds.GENERATED)
     val parentKind = a.kind match {
@@ -800,7 +825,7 @@ class DomEngineV1 (
         else throw new DieselExprException("can't find parent in ruleDecomp - check your indentation levels!")
       }
 
-      val ast = DomAst(x, AstKinds.NEXT).withSpec(r)
+      val ast = DomAst(x, AstKinds.NEXT).withSpec(r).withTailrec(tailrec)
       parents.put(level, ast)
 
       if (level == 0) Some(ast)
@@ -842,16 +867,16 @@ class DomEngineV1 (
 
         case x: EMsg if x.entity == "" && x.met == "" && r.i.size > 1 => {
           // can't execute now, but later
-          Some(DomAst(ENext(x, "=>", None, true), AstKinds.NEXT).withSpec(r))
+          Some(DomAst(ENext(x, "=>", None, true), AstKinds.NEXT).withSpec(r).withTailrec(tailrec))
         }
 
         // else collect message
         case x: EMsg => {
           subRules += 1
           if(r.i.size > 1)
-            Some(DomAst(ENext(x, "=>"), AstKinds.NEXT).withSpec(r))
+            Some(DomAst(ENext(x, "=>"), AstKinds.NEXT).withSpec(r).withTailrec(tailrec))
           else
-            Some(DomAst(x, KIND).withSpec(r))
+            Some(DomAst(x, KIND).withSpec(r).withTailrec(tailrec))
         }
 
         case x: ENext => {
@@ -866,7 +891,7 @@ class DomEngineV1 (
         case x @ _ => {
           // vals and whatever other things
           subRules += 1
-          Some(DomAst(x, KIND).withSpec(r))
+          Some(DomAst(x, KIND).withSpec(r).withTailrec(tailrec))
         }
       }.filter(_.isDefined)
 
@@ -970,6 +995,36 @@ class DomEngineV1 (
       } else if (ea == DieselMsg.ENGINE.DIESEL_NOP) {
         true
 
+      } else if (ea == DieselMsg.ENGINE.DIESEL_RUNSTORY) {
+        val wpath = in.attrs.find(_.name == "wpath").map(_.calculatedValue).getOrElse {
+          val name = in.attrs.find(_.name == "name").map(_.calculatedValue)
+          val wp = s"${this.settings.realm.mkString}.Story:${name.mkString}"
+          wp
+        }
+
+        import razie.wiki.model._
+
+        // todo nice error if not found
+        val story = WID.fromPath(wpath).flatMap(Wikis.find).toList
+
+        if(story.isEmpty) {
+          evAppChildren(a,
+            DomAst(new EError(s"Could not find story to embed: " + wpath, ""), AstKinds.GENERATED)
+          )
+        }
+
+        EnginePrep.addStoriesToAst(this, story, Some(a))
+
+        // they're RECEIVED, should be GENERATED now so they can run...
+//        a.childrenCol.foreach(_.kind = AstKinds.GENERATED)
+//        a.childrenCol.head.childrenCol.foreach(_.kind = AstKinds.GENERATED)
+
+        a.childrenCol.head.parent = None
+        newNodes.appendAll(a.childrenCol)
+        a.childrenCol.clear() //
+
+        true
+
       } else if (ea == DieselMsg.ENGINE.DIESEL_CLEANSTORY) { //========================
 
         if ((description contains "Guardian") && !settings.slaSet.contains(DieselSLASettings.VERBOSE)) {
@@ -1044,7 +1099,7 @@ class DomEngineV1 (
 
         true
 
-      } else if (ea == DieselMsg.ENGINE.DIESEL_RETURN || ea == DieselMsg.ENGINE.DIESEL_FLOW_RETURN) { //========================
+      } else if (ea == DieselMsg.ENGINE.DIESEL_RETURN || ea == DieselMsg.ENGINE.DIESEL_FLOW_RETURN || ea == DieselMsg.ENGINE.DIESEL_STORY_RETURN) { //========================
 
         // set all attributes in the root context
         in.attrs.map(_.calculatedP).foreach { p =>
@@ -1065,15 +1120,21 @@ class DomEngineV1 (
 
         // likewise, diesel.rest is a scope for return
 
-        var scope =
-          findParentWith(a, _.parent.exists(_.value.isInstanceOf[StoryNode]))
+        var scope = {
+          (if (ea != DieselMsg.ENGINE.DIESEL_STORY_RETURN)
+            // try to cancel just the message that used return
+            findParentWith(a, _.parent.exists(_.value.isInstanceOf[StoryNode]))
+          else None
+          )
               .orElse(
+                // skip rest of story
                 findParentWith(a, _.value.isInstanceOf[StoryNode])
               )
               .orElse(
                 findParentWith(a, x => x.value.isInstanceOf[EMsg] && x.value.asInstanceOf[EMsg].ea == DIESEL_REST)
               )
               .getOrElse(root)
+        }
 
         // stop other children
         val skipped = scope.collect {
@@ -1371,12 +1432,6 @@ class DomEngineV1 (
           }
         }
 
-        val p = P.fromSmartTypedValue("exceptions", exc.toList)
-        val v = DomAst(new EVal(p), AstKinds.GENERATED)
-        evAppChildren(a, v)
-        setSmartValueInContext(a, ctx.getScopeCtx, p)
-
-
         // todo if DONE vs CAUGHT - done means just exception found, no "throw" found
 
         // IF diesel.throw was used, it will have this attribute in case something was "caught"
@@ -1389,6 +1444,12 @@ class DomEngineV1 (
             // todo this bombs if the children are not in tree yet...
 //          evChangeStatus(ast, DomState.SKIPPED)
           }
+        } else {
+          // only set this if children will be processed, otherwise ignore
+          val p = P.fromSmartTypedValue("exceptions", exc.toList)
+          val v = DomAst(new EVal(p), AstKinds.GENERATED)
+          evAppChildren(a, v)
+          setSmartValueInContext(a, ctx.getScopeCtx, p)
         }
 
         true
@@ -1484,7 +1545,7 @@ class DomEngineV1 (
         dom.moreElements.collect {
           case v: EVal => {
             // clone so nobody changes the calculated value of p
-            val newv = v.copy(p = v.p.copy().copyFrom(v.p)).copyFrom(v)
+            val newv = v.copy(p = v.p.copy().copyValueFrom(v.p)).copyFrom(v)
             evAppChildren(a, DomAst(newv, AstKinds.VERBOSE))
             // do not calculate here - keep them more like exprs .calculatedP)
 

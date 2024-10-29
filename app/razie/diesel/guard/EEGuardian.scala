@@ -174,6 +174,8 @@ class EEGuardian extends EExecutor(DieselMsg.GUARDIAN.ENTITY) with Logging {
         val realm = ctx.getRequired("realm") // altho you can only run your for now
         val settings = ctx.root.settings
 
+        val qparms = in.attrs.filter(p=>p.name != "env" && "realm" != p.name).map(p=>(p.name, p.currentStringValue)).toMap
+
         // admins get to run anywhere they want
         val inrealm = if (
           settings.userId
@@ -184,7 +186,7 @@ class EEGuardian extends EExecutor(DieselMsg.GUARDIAN.ENTITY) with Logging {
 
         val tq = ctx.get("tagQuery").getOrElse(Guardian.autoQuery(inrealm))
 
-        val x@(f, e, res1) = DomGuardian.runReq(settings.userId.flatMap(Users.findUserById), inrealm, env, tq, true, None)
+        val x@(f, e, res1) = DomGuardian.runReq(settings.userId.flatMap(Users.findUserById), inrealm, env, tq, None, qparms, auto = true, None)
         val linkMsg =
           e.map(eng=>
             s"""scheduled new run... <a href="/diesel/viewAst/${eng.id}">view</a>"""

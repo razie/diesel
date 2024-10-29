@@ -492,7 +492,7 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
         DieselMsg.fiddleStoryUpdated + s"(${storyPage.name})")
       setHostname(engine.ctx.root)
 
-      EnginePrep.addStoriesToAst(engine, List(storyPage), capture startsWith "{")
+      EnginePrep.addStoriesToAst(engine, List(storyPage), None, capture startsWith "{")
 
       DomCollector.collectAst("fiddle", stok.realm, engine, stok.uri)
 

@@ -11,11 +11,11 @@ import akka.util.ByteString
 import javax.inject.Singleton
 import play.api.http.{HttpEntity, Writeable}
 import play.api.mvc
-import play.api.mvc.{Action, RawBuffer}
+import play.api.mvc.{Action, RawBuffer, Request}
 import razie.diesel.engine.exec.{SnakkCall, SnakkCallAsyncList}
 import razie.snakked.SnakkProxyRemote
 import razie.wiki.Services
-import razie.{Logging, Snakk, SnakkRequest}
+import razie.{Logging, Snakk, SnakkRequest, SnakkResponse}
 import scala.concurrent._
 import scala.concurrent.duration._
 
@@ -48,35 +48,44 @@ class SnakkProxyControl extends RazController with Logging {
       /* RAZ play 2.6  val body = raw.map {a => new String(a.asByteBuffer.array(), "UTF-8")}.getOrElse("") */
       val body = raw.map(a => new String(a.toArray)).getOrElse("")
 
-      log("SNAKKPROXY_RECEIVED: " + body.replaceAllLiterally("\n", ""))
+      log("SNAKKP_RECEIVED: " + body.replaceAllLiterally("\n", ""))
 
       val resp = Snakk.responseFromJson(body)
       SnakkCallAsyncList.complete(id, resp)
     } catch {
-      case t : Throwable => log("During SNAKKPROXY_RECEIVED:" + t.toString)
+      case t : Throwable => log("During SNAKKP_RECEIVED:" + t.toString)
     }
 
     Ok("")
   }
 
   /** client creating a request to proxy something */
-  def proxy (env:String, p: String, host:String, port:String, path:String) = RAction.async { implicit request =>
+  def proxy (env:String, p: String, host:String, port:String, path:String) : Action[RawBuffer] = Action.async(parse.raw) { implicit request =>
     val sport = if(p == "https" && port == "443" || p == "http" && port == "80") "" else s":$port"
     val spath = if(path.startsWith("/")) path else "/"+path
-    val sc = SnakkCall(p, request.method, s"$host$sport$spath", request.headers.toSimpleMap, "")
-        .withEnv(env)
-        .withCookies(request.ireq.cookies)
-        .withSession(request.ireq.session)
+    val raw = request.body.asBytes()
+    val squery = request.rawQueryString
 
-    log("SNAKKPROXY_Proxying - " + sc.toJson.replaceAllLiterally("\n", " "))
+    // RAZ play 2.6 val body = raw.map(a => new String(a.asByteBuffer.array())).getOrElse("")
+    val body = raw.map(a => new String(a.toArray)).getOrElse("")
+
+    val sc = SnakkCall(
+      p, request.method, s"$host$sport$spath?$squery",
+      request.headers.toMap.map(t=>(t._1, t._2.toList)),
+      body, None)
+        .withEnv(env)
+        .withCookies(request.cookies)
+        .withSession(request.session)
+
+    log("SNAKKP_Proxying - " + sc.toJson.replaceAllLiterally("\n", " "))
 
     val f = sc.future
     implicit val ec: ExecutionContext = Services.system.getDispatcher
     lazy val timeout = after(duration = TOUT, using = Services.system.scheduler)(Future.successful(RequestTimeout("Request timeout !!")))(ec)
 
     val result = f.map {response=>
-      log("SNAKKPROXY_returning - " + response)
-      new Status(response.resCode )(response.content).withHeaders(response.headers.toSeq:_*)
+      log("SNAKKP_returning - " + response)
+      responseToResult(response)
     }(ec)
 
     Future.firstCompletedOf(Seq(result, timeout))(ec)
@@ -92,8 +101,13 @@ class SnakkProxyControl extends RazController with Logging {
     // RAZ play 2.6 val body = raw.map(a => new String(a.asByteBuffer.array())).getOrElse("")
     val body = raw.map(a => new String(a.toArray)).getOrElse("")
 
-    val sc = SnakkRequest("http", request.method, s"$newUrl${request.path}${q}", request.headers.toSimpleMap, body)
-        .withCookies(request.cookies)
+    val sc = SnakkRequest(
+      "http",
+      request.method,
+      s"$newUrl${request.path}${q}",
+      request.headers.toMap.map(t=>(t._1, t._2.toList)),
+      body)
+      .withCookies(request.cookies)
 
     razie.Log.info("--------PROXY------- SnakkRequest" + sc.toString())
 
@@ -101,6 +115,10 @@ class SnakkProxyControl extends RazController with Logging {
 
     razie.Log.info("--------PROXY------- SnakkResponse" + response.toString())
 
+    responseToResult(response)
+  }
+
+  private def responseToResult (response:SnakkResponse) (implicit request : Request[RawBuffer]) = {
     implicit val identityWriteable: Writeable[HttpEntity.Strict] = new Writeable[HttpEntity.Strict](
       transform = _.data, contentType = Some(response.ctype)) {
       override def toEntity(a: HttpEntity.Strict): HttpEntity = HttpEntity.Strict(transform(a),
@@ -113,8 +131,7 @@ class SnakkProxyControl extends RazController with Logging {
         Some(response.ctype).filter(_.nonEmpty)//.orElse(Some("text/plain"))
       )
     )(identityWriteable)
-        .withHeaders(response.headers.toSeq: _*)
-
+        .withHeaders(response.headerSeq: _*)
 
     xx //res
   }

@@ -69,8 +69,9 @@ object EnginePrep extends Logging {
   /** load all stories for reactor, either drafts or final and return the list of wikis */
   def loadStories(settings: DomEngineSettings, reactor: String, userId: Option[ObjectId], storyWpath: String) = {
     val uid = userId.getOrElse(new ObjectId())
-    val pages =
-      if (settings.blenderMode) {
+    val pages = {
+      // on blender or without a specific story - load tquery
+      if (settings.blenderMode && storyWpath.length == 0) {
         val list =
           settings.tagQuery.map { tagQuery =>
             // todo how can we optimize for large reactors: if it starts with "story" use the Story category?
@@ -123,6 +124,7 @@ object EnginePrep extends Logging {
         val page = new WikiEntry("Story", specName, specName, "md", spec, uid, Seq("dslObject"), reactor)
         List(page)
       }
+    }
     pages
   }
 
@@ -366,7 +368,7 @@ object EnginePrep extends Logging {
 
     val allStories = listStoriesWithFiddles(stories, addFiddles)
 
-    addStoriesToAst(engine, allStories, justTests, justMocks, addFiddles)
+    addStoriesToAst(engine, allStories, None, justTests, justMocks, addFiddles)
   }
 
   /* add a message */
@@ -379,7 +381,7 @@ object EnginePrep extends Logging {
   /**
     * add all nodes from story and add them to root
     */
-  def addStoriesToAst(engine: DomEngine, stories: List[DSpec], justTests: Boolean = false, justMocks: Boolean =
+  def addStoriesToAst(engine: DomEngine, stories: List[DSpec], otherRoot:Option[DomAst] = None, justTests: Boolean = false, justMocks: Boolean =
   false, addFiddles: Boolean = false) = {
 
     engine.addedStories = engine.addedStories ::: stories
@@ -388,7 +390,7 @@ object EnginePrep extends Logging {
     var lastMsgAst: Option[DomAst] = None
     var lastAst: List[DomAst] = Nil
     var inSequence = true
-    val root = engine.root
+    val root = otherRoot.getOrElse(engine.root)
 
     /** hookup this new message to the last one */
     def addMsg(v: EMsg, kind: String = AstKinds.RECEIVED) = {

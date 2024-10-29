@@ -12,10 +12,12 @@ import razie.db.{RMany, ROne}
 import razie.hosting.{BannedIps, RkReactors, Website, WikiReactors}
 import razie.tconf.Visibility
 import razie.wiki.Sec._
+import razie.wiki.admin.GlobalData
 import razie.wiki.model._
 import razie.wiki.{Config, Enc, Services, WikiConfig}
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.Future
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, Future}
 import scala.util.{Random, Try}
 
 
@@ -76,7 +78,10 @@ class Application @Inject()(wikiCtl: Wiki, realmCtl:Realm) extends RazController
 
         } getOrElse {
 
-          // 3 - no known host
+          // 3 - no known host - i.e. realms still loading etc
+
+          // wait all loaded
+          Await.result(GlobalData.reactorsLoadedF, Duration("20 seconds"))
 
           var r = wikiCtl.getRealm()
 

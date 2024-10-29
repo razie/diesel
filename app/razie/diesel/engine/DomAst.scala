@@ -46,6 +46,12 @@ case class DomAst(
 
   var parent: Option[DomAst] = None
 
+  var tailrec = false
+  def withTailrec (b:Boolean) = {
+    this.tailrec = b
+    this
+  }
+
   // todo the nodes should remember the context they had, so we can see the values at that point, later
   // todo most likely clone the environment, when processing done?
   private var imyCtx: Option[ECtx] = None
@@ -244,7 +250,7 @@ case class DomAst(
     res.toList
   }
 
-  /** when you need to avoid certain paths like subtraces */
+  /** when you need to avoid certain paths like subtraces. the filter stops recursion */
   def collectWithFilter[T](f: PartialFunction[DomAst, T]) (filter:PartialFunction[DomAst, Boolean]): List[T] = {
     val res = new ListBuffer[T]()
 
@@ -416,6 +422,13 @@ case class DomAst(
       Option(this)
     else
       children.foldLeft(None: Option[DomAst])((a, b) => a orElse b.find(pred))
+
+  /** find looking up to the root, by predicate */
+  def findParent(pred: DomAst => Boolean): Option[DomAst] =
+    if (pred(this))
+      Option(this)
+    else
+      parent.flatMap(_.findParent(pred))
 
   def setKinds(kkk: String): DomAst = {
     this.kind = kkk

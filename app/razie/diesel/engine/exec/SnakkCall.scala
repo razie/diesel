@@ -8,7 +8,7 @@ package razie.diesel.engine.exec
 import salat._
 import com.razie.pub.comms.Comms
 import java.io.PrintWriter
-import java.net.Socket
+import java.net.{InetAddress, Socket}
 import java.util.regex.Pattern
 import org.json.JSONObject
 import play.api.mvc.{Cookies, Session}
@@ -37,9 +37,26 @@ case class SnakkCall (
   protocol: String,
   method: String,
   url: String,
-  headers: Map[String, String],
+  headers: Map[String, List[String]],
   content: String,
-  template:Option[DTemplate] = None) {
+  template:Option[DTemplate]) {
+
+  /** old constructor */
+  def this (
+    protocol: String,
+    method: String,
+    url: String,
+    headers: Map[String, String],
+    content: String,
+    template:Option[DTemplate] = None,
+    nothing:Option[String] = None) = this (protocol, method, url,
+    headers.map (t=>(t._1, List(t._2))), content, template)
+
+  def headerSeq =
+    headers.flatMap(t=> t._2.map(v=> (t._1, v))).toSeq
+
+  def headerMap =
+    headers.map(t=> (t._1, t._2.mkString))
 
   def toJson = grater[SnakkCall].toPrettyJSON(this)
 
@@ -49,7 +66,7 @@ case class SnakkCall (
   def toCurl = {
     "curl -k " +
       ("-X " + method) +
-      (headers.map{t=>
+      (headers.flatMap(t=>t._2.map (t._1 -> _)).map{t=>
         s""" -H '${t._1}:${t._2}' """
       }).mkString(" ") +
       (
@@ -58,7 +75,7 @@ case class SnakkCall (
     s"'${isurl.url.toString}'"
   }
 
-  var pro : Option[Promise[SnakkResponse]] = None
+  var promise : Option[Promise[SnakkResponse]] = None
 
   // todo this class won't work if this is not set from the outside - that's wrong and confusing, to say the least...
   private var _isurl: SnakkUrl = null //Snakk.url(url, headers, (if(method.length == 0) "GET" else method)) //null
@@ -90,7 +107,7 @@ case class SnakkCall (
     this
   }
 
-  def isurl = if (_isurl != null) _isurl else Snakk.url(url, headers, (if(method.length == 0) "GET" else method))
+  def isurl = if (_isurl != null) _isurl else Snakk.url(url, headerMap, (if(method.length == 0) "GET" else method))
 
   def postContent = if (content != null && content.length > 0) Some(content) else None
 
@@ -134,11 +151,11 @@ case class SnakkCall (
   }
 
   def future : Future[SnakkResponse] = {
-    if(! this.pro.isDefined) {
-      this.pro = Some(Promise[SnakkResponse]())
+    if(! this.promise.isDefined) {
+      this.promise = Some(Promise[SnakkResponse]())
       SnakkCallAsyncList.put(this)
     }
-    pro.get.future
+    promise.get.future
   }
 
   /** xp root for either xml or json body */
@@ -150,6 +167,30 @@ case class SnakkCall (
       case x@_ => {
         //        throw new IllegalStateException ("unknown content-type: "+x)
         None
+      }
+    }
+  }
+
+  /** ping content from a telnet connection
+    *
+    * @param hostname
+    * @param info
+    * @return
+    */
+  def ping(hostname: String, info: Option[InfoAccumulator]): Boolean = {
+    var pingSocket : Socket = null
+
+    var res = ""
+    try {
+
+      val address = InetAddress.getByName(hostname)
+      val reachable = address.isReachable(5000)
+
+      reachable
+    } catch {
+      case e: Throwable => {
+        razie.Log.log("snakk.telnet Exception", e)
+        return false
       }
     }
   }

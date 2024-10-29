@@ -248,18 +248,25 @@ object DieselMsg {
     final val DIESEL_BEFORE = "diesel.before"
     final val DIESEL_AFTER = "diesel.after"
     final val DIESEL_LEVELS = "diesel.levels"
+
+    final val DIESEL_RUNSTORY = "diesel.story.run"
+
     final val DIESEL_RETURN = "diesel.return" // todo obsolete
     final val DIESEL_FLOW_RETURN = "diesel.flow.return"
     final val DIESEL_SCOPE_RETURN = "diesel.scope.return"
     final val DIESEL_RULE_RETURN = "diesel.rule.return"
-    final val DIESEL_THROW = "diesel.throw"
-    final val DIESEL_PING = "diesel.ping"
+    final val DIESEL_STORY_RETURN = "diesel.story.return"
+
     final val DIESEL_TRY = "diesel.try"
+    final val DIESEL_THROW = "diesel.throw"
+    final val DIESEL_CATCH = "diesel.catch"
+
     final val DIESEL_REALM_READY = "diesel.realm.ready"
+
+    final val DIESEL_PING = "diesel.ping"
     final val DIESEL_ERROR = "diesel.error"
     final val DIESEL_LOG = "diesel.log"
     final val DIESEL_AUDIT = "diesel.audit"
-    final val DIESEL_CATCH = "diesel.catch"
     final val DIESEL_SUMMARY = "diesel.summary"
     final val DIESEL_DEBUG = "diesel.debug"
     final val DIESEL_LATER = "diesel.later"

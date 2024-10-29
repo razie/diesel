@@ -33,72 +33,6 @@ trait InfoNode // just a marker for useless info nodes
 
 trait EGenerated // just a marker for "action" generated nodes (EMsg, EMsgPas, ENext etc)
 
-object DomRefs {
-  final val CAT_DIESEL_ENGINE = "DieselEngine"
-  final val CAT_DIESEL_NODE = "DieselNode"
-
-  def isLocal(node: Option[DCNode]): Boolean = node.isEmpty || isLocal(node.get)
-
-  def isLocal(node: DCNode): Boolean = {
-    node.name.compareTo(DieselCluster.clusterNodeSimple) == 0 || node.name.trim.isEmpty
-  }
-
-  def isRemote(node: Option[DCNode]): Boolean = !isLocal(node)
-
-  def setNode (node:String) = {
-    if (node == DieselCluster.clusterNodeSimple || node.trim.isEmpty) None else Option(node)
-  }
-
-  def parseDomAssetRef (str:String) = {
-    WID.widFromSegWithNode(str) match {
-      case Some((n,r,c,i,s)) => Option(DomAssetRef (c, i, r, s, n))
-      case None => None
-    }
-  }
-}
-
-/** this is a reference inside another engine, a correlation point
-  *
-  * with node hint: format is parent/(world,node)realm.cat:name#section
-  *
-  * @param id         engine id
-  * @param section  for engines, node inside the engine (suspended there or just referenced)
-  * @param node     node that manages the other engine hopefully, None means local (default)
-  */
-case class DomAssetRef (
-  cat:String,
-  id:String,
-  realm:Option[String] = None,
-  section:Option[String] = None,
-  node:Option[DCNode] = None
-) {
-  @transient val isLocal:Boolean = DomRefs.isLocal(node) // optimize this comparison
-  @transient val isRemote:Boolean = !DomRefs.isLocal(node) // optimize this comparison
-
-  def mkString:String = node.map(x=> s"($x)$cat:").mkString + id + section.map(x=>"#"+x).mkString
-  def mkEngRef:String = node.map(x=> s"($x)$cat:").mkString + id
-
-  /** fully qualified ref to send to other node */
-  def fullNodeRef = if (node.isEmpty) this.copy (node=Option(DCNode(DieselCluster.clusterNodeSimple))) else this
-
-  def withNode (node:DCNode) = {
-    val other = if (DomRefs.isLocal(node)) None else Option(node)
-    this.copy (node=other)
-  }
-
-  def href =
-    if(isLocal) DieselAssets.mkAhref(WID(cat, this.id))
-    else DieselAssets.mkAhref(WID(cat, this.id), mkEngRef)
-
-  def toj = Map (
-    "cat" -> cat,
-    "id" -> id,
-  ) ++ realm.map (x=> Map("realm" -> x)).getOrElse(Map.empty
-  ) ++ section.map (x=> Map("section" -> x)).getOrElse(Map.empty
-  ) ++ node.map (x=> Map("node" -> x.name)).getOrElse(Map.empty
-  )
-}
-
 case class CachedEngingPrep(
   dom:RDomain,
   ipages:List[DSpec],
@@ -296,13 +230,40 @@ abstract class DomEngine (
   }
 
   // todo use
-  var initialMsg: Option[EMsg] = None
+  private var initialMsg: Option[EMsg] = None
 
   /** we'll eventually use this info  */
   def withInitialMsg(m: Option[EMsg]) = {
     this.initialMsg = m
     this
   }
+
+  /** find the first msg generated in this engine - this is the structure when REST APIs create engines */
+  def findFirstGeneratedMsg () = {
+    // see if there is only one message child...
+    val m = root
+        .children
+        // without hardcoded engine messages - diesel.rest and ping is allowed
+        .filterNot(x =>
+          x.value.isInstanceOf[EMsg] &&
+              x.value.asInstanceOf[EMsg].entity == DieselMsg.ENGINE.ENTITY &&
+              x.value.asInstanceOf[EMsg].met != "rest" &&
+              x.value.asInstanceOf[EMsg].met != "ping")
+        .filter(x =>
+          // skip debug infos and other stuff = we need the first message
+          x.value.isInstanceOf[EMsg])
+        .head
+        .children
+        .find(_.children.headOption.exists(_.value.isInstanceOf[EMsg]))
+    m
+  }
+
+  /** either what the API set as the initial msg when running a msg directly,
+    * or try to find in the actual dom tree
+    *
+    * - when running as diesel.rest we don't want the diesel.rest, bbut whatever it genrated
+    */
+  def getInitialMsg = initialMsg
 
   /** stash messages while the engine is paused in step by step mode */
   var stashedMsg : ListBuffer[DEMsg] = null
@@ -1290,14 +1251,24 @@ abstract class DomEngine (
       case n: EMsg if n.ea == ea => n
     }.toList.flatMap(_.ret)
 
+    // IMPORTANT !!
+    // this helps prevent returning static values not generated in this engine
+    // any values generated in stories and settings will go before this
+    // this is the received message
+    var afterReceived = false
+
     // collect all values
     // todo this must be smarter - ignore diese.before values, don't look inside scopes etc?
     // ignore subtrees so to not confuse intermediary payloads
     val valuesp = root.collectWithFilter ({
       case d@DomAst(EVal(p), /*AstKinds.GENERATED*/ _, _, _)
-        if oattrs.isEmpty || oattrs.find(_.name == p.name).isDefined => p
+        if afterReceived && (oattrs.isEmpty || oattrs.exists(_.name == p.name)) => p
     }) ({
-      case d@DomAst(_, AstKinds.SUBTRACE, _, _) => false
+      case d@DomAst(_, AstKinds.RECEIVED, _, _) => {
+        afterReceived = true
+        true // don't stop recursion here - this is where we want to look
+      } // don't look in other sub-flows
+      case d@DomAst(_, AstKinds.SUBTRACE, _, _) => false // don't look in other sub-flows
       case _ => true
     })
 
@@ -1323,23 +1294,17 @@ abstract class DomEngine (
     resp
   }.getOrElse(None)
 
-  def finalContext(e: String, a: String) = {
-    require(DomState.isDone(this.status)) // no sync
-
-    // find the spec and check its result
-    // then find the resulting value.. if not, then json
-    val oattrs = findSpec(e,a).toList.flatMap(_.ret)
-
-    // collect values
-    val values = root.collect {
-      case DomAst(EVal(p), /*AstKinds.GENERATED*/ _, _, _) if oattrs.isEmpty || oattrs.find(
-        _.name == p.name).isDefined => p
-    }
-
-    values
+  /** find the last payload set in this engine and make sure it has calc value */
+  def extractCalculatedPayload (): Option[P] = {
+    // todo maybe calculate in local context not global? What if it's an expression with local identifiers? How do I know which local context was used when it was assigned? Should all payload assignments be values?
+    // one solution: assignments to payload are pre-calculated
+    engine.ctx
+      .getp(Diesel.PAYLOAD)
+      .filter(_.ttype != WTypes.wt.UNDEFINED)
+      .map(_.calculatedP(engine.ctx))
   }
 
-  def addError(t: Throwable) {
+  def addError(t: Throwable): Unit = {
     root.append(DomAst(new EError("Exception:", t), AstKinds.ERROR).withStatus(DomState.DONE))
   }
 

@@ -96,7 +96,7 @@ object DomGuardian extends Logging {
   }
 
   /** start a check run. the first time, it will init the guardian and listeners */
-  def startCheck(realm: String, au: Option[User], tq: String, osettings: Option[DomEngineSettings] = None):
+  def startCheck(realm: String, au: Option[User], tq: String, osettings: Option[DomEngineSettings] = None,  q:Map[String,String] = Map.empty, oneStory:Option[String] = None ):
   (Future[Report], Option[DomEngine], List[Any]) = {
     if (!DomGuardian.init) {
 
@@ -146,7 +146,7 @@ object DomGuardian extends Logging {
     clog << s"DIESEL startCheck ${realm} for ${au.map(_.userName)}"
 
     // these are debounced in there...
-    DomGuardian.runReq(au, realm, "", tq, false, osettings)
+    DomGuardian.runReq(au, realm, "", tq, oneStory, q, auto = false, osettings)
   }
 
   case class Report(req: Option[RunReq],
@@ -175,7 +175,9 @@ object DomGuardian extends Logging {
                     ienv: String,
                     auto: Boolean = false, // autos will send emails
                     tq: Option[String] = None,
+                    oneStory : Option[String] = None,
                     osettings: Option[DomEngineSettings] = None,
+                    qparms:Map[String, String] = Map.empty,
                     when: DateTime = DateTime.now()
                    ) {
 
@@ -206,7 +208,7 @@ object DomGuardian extends Logging {
       // override for this flow
       settings.env = Some(env)
 
-      val stories = EnginePrep.loadStories(settings, realm, au.map(_._id), "")
+      val stories = EnginePrep.loadStories(settings, realm, au.map(_._id), oneStory.mkString)
 
       val starts = new WikiEntry("Story", DieselMsg.GUARDIAN.STARTS_STORY, DieselMsg.GUARDIAN.STARTS_STORY, "md",
         s"""
@@ -241,6 +243,9 @@ object DomGuardian extends Logging {
         None,
         addFiddles
       )
+
+      // preset parameters sent in:
+      qparms.foreach(t=>engine.ctx.put (P.fromSmartTypedValue(t._1, t._2)))
 
       DomCollector.collectAst("guardian", realm, engine)
 
@@ -340,6 +345,8 @@ object DomGuardian extends Logging {
     realm: String,
     env: String,
     tq: String,
+    oneStory: Option[String] = None,
+    qparms: Map[String,String] = Map.empty,
     auto: Boolean = false,
     settings: Option[DomEngineSettings]): (Future[Report], Option[DomEngine], List[Any]) = {
     val res = new ListBuffer[Any]()
@@ -351,7 +358,7 @@ object DomGuardian extends Logging {
       val q = if (tq.isEmpty) None else Some(tq)
       //        Some(tq.getOrElse(Guardian.autoQuery(realm)))
 
-      val rr = RunReq(au, au.map(_.userName).mkString, realm, env, auto, q, osettings = settings)
+      val rr = RunReq(au, au.map(_.userName).mkString, realm, env, auto, q, oneStory, osettings = settings, qparms)
       val k = rr.key
       res append EInfo(s"Guardian created a RunReq $k")
 

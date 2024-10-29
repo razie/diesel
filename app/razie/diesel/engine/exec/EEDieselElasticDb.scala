@@ -231,7 +231,7 @@ case class EElasticConnector (
 
     val startMillis = System.currentTimeMillis()
 
-    val sc = SnakkCall("", "POST", surl, Map(WTypes.CONTENT_TYPE -> WTypes.Mime.appJson), razie.js.tojsons(j.toMap))
+    val sc = SnakkCall("", "POST", surl, Map(WTypes.CONTENT_TYPE -> List(WTypes.Mime.appJson)), razie.js.tojsons(j.toMap), None)
 
     val r = Try {
       val snakkres = sc.makeCall

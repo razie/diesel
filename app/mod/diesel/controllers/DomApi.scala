@@ -20,7 +20,7 @@ import razie.diesel.engine._
 import razie.diesel.engine.exec.{EECtx, EESnakk, SnakkCall}
 import razie.diesel.engine.nodes.EnginePrep.{catPages, listStoriesWithFiddles}
 import razie.diesel.engine.nodes._
-import razie.diesel.expr.{ECtx, SimpleECtx, StaticECtx}
+import razie.diesel.expr.{CExpr, ECtx, SimpleECtx, StaticECtx}
 import razie.diesel.model.DieselMsg.ENGINE.DIESEL_REST
 import razie.diesel.model.{DieselMsg, DieselMsgString, DieselTarget}
 import razie.diesel.model.DieselMsg.HTTP
@@ -214,7 +214,7 @@ class DomApi extends DomApiBase with Logging {
     settings = settings.copy(realm = Some(reactor))
 
 
-    // --------------- FAST
+    // --------------- FAST vvvvv
 
 
     val uid = stok.au.map(_._id).getOrElse(NOUSER)
@@ -240,6 +240,8 @@ class DomApi extends DomApiBase with Logging {
  // now using same as diesel/rest, copied above
 
      // val engine = strMsg.mkEngine
+
+    // --------------- SLOW ^^^^^
 
 
     engine.root.prependAllNoEvents(
@@ -997,22 +999,10 @@ class DomApi extends DomApiBase with Logging {
               val templateResp =
                   if(engine.useTemplates)
                     engine.ctx.findTemplate(e + "." + a, "response").orElse {
+
                 // see if there is only one message child... and it has an output template - we'll use that one
-                val m = engine
-                    .root
-                    .children
-                    // without hardcoded engine messages - diesel.rest and ping is allowed
-                    .filterNot(x =>
-                      x.value.isInstanceOf[EMsg] &&
-                          x.value.asInstanceOf[EMsg].entity == DieselMsg.ENGINE.ENTITY &&
-                          x.value.asInstanceOf[EMsg].met != "rest" &&
-                          x.value.asInstanceOf[EMsg].met != "ping")
-                    .filter(x =>
-                      // skip debug infos and other stuff = we need the first message
-                      x.value.isInstanceOf[EMsg])
-                    .head
-                    .children
-                    .find(_.children.headOption.exists(_.value.isInstanceOf[EMsg]))
+                // idea is that diesel.rest will generate this message - normally diesel.rest is bound to one message
+                val m = engine.findFirstGeneratedMsg()
 
                 m.flatMap { m =>
                   val msg = m.children.head.value.asInstanceOf[EMsg]
@@ -1036,9 +1026,11 @@ class DomApi extends DomApiBase with Logging {
                     .getOrElse("text/plain") // or plain
 
               templateResp.map { t =>
+                // ============================
                 // we have a response template
+                // ============================
 
-                //          val s = EESnakk.formatTemplate(t.content, ECtx(res))
+                //todo maybe reuse this val s = EESnakk.formatTemplate(t.content, ECtx(res))
                 // engine.ctx accumulates results and we add the input
 
                 // templates strt with a \n normally
@@ -1051,8 +1043,6 @@ class DomApi extends DomApiBase with Logging {
                   val allValues = new StaticECtx(msg.attrs, Some(engine.ctx))
                   EESnakk.formatTemplate(content, allValues)
                 } else {
-                  // engine.ctx.get(Diesel.PAYLOAD).getOrElse("no msg recognized, no result, no response template")
-
                   engine.ctx.getp(Diesel.PAYLOAD).map { p =>
 //                if (p.value.isDefined) {
                     if (p.hasCurrentValue) {
@@ -1095,7 +1085,9 @@ class DomApi extends DomApiBase with Logging {
                 }
 
               }.getOrElse {
+                // ============================
                 // no response template - send the payload
+                // ============================
 
                 val res = s"No response template for ${e}.${a}\n" + engine.root.toString
                 ctrace << s"RUN_REST_REPLY $verb $mock $path\n" + res
@@ -1150,12 +1142,9 @@ class DomApi extends DomApiBase with Logging {
               val x = o.asInstanceOf[collection.mutable.HashMap[String,String]]
               if (engine.description.matches(x("pattern"))) {
                 dur = x("timeout")
-                engine.root.appendAllNoEvents(
-                  List(
-                    DomAst(
-                      EInfo(s"diesel.rest.timeout reset to: ${dur}", s"timeout override to: ($dur)"), AstKinds.VERBOSE)
-                        .withStatus(DomState.SKIPPED)
-                  ))
+                engine.root.appendVerbose(
+                    ETrace(s"diesel.rest.timeout reset to: ${dur}", s"timeout override to: ($dur)")
+                  )
               }
             }
 
@@ -1385,6 +1374,7 @@ class DomApi extends DomApiBase with Logging {
     implicit val stok = razRequest(request)
 
     val raw = request.body.asBytes()
+
     // RAZ play 2.6 val body = raw.map(a => new String(a.asByteBuffer.array())).getOrElse("")
     val body = raw.map(a => new String(a.toArray)).getOrElse("")
     val postedContent = Some(new EContent(
@@ -1395,6 +1385,8 @@ class DomApi extends DomApiBase with Logging {
       None,
 //          raw.map(_.asByteBuffer.array())))
       raw.map(_.toArray)))
+
+    log ("========= dieselEngineScript: " + body)
 
       if (body.length > 0) {
         val m = if(body startsWith "$") body else "$msg " + body
@@ -1418,12 +1410,25 @@ class DomApi extends DomApiBase with Logging {
 
 
   /** /diesel/proxy/path   proxy real service GET */
-  def proxy(ipath: String) = FAUPRAPI(true) { implicit stok =>
-    val  path = Enc.fromUrl(ipath + "?") + stok.ireq.rawQueryString
+  def dieselProxy(ipath: String) = FAUPRAPI(true) { implicit stok =>
+    val au = activeUser(stok.ireq, stok.errCollector);
+    val b  = au.filter(deemedMemberOfRealm(_, stok.realm))
+
+    assert (b.isDefined)
+
+    // maybe path is a local variable
+    val newpath = Enc.fromUrl(ipath + "?") + stok.ireq.rawQueryString
+    val path = if(newpath.contains("""${""")) {
+      // todo security hole - they can evaluate expressions and retrieve stuff by trying to proxy to an echo /diesel/proxy/http://myechoqp.com?p1=${diesel.user} etc
+      // since this is always wiht a user creds, i don't see what they could find though...?
+      val expr = "\"" + newpath + "\""
+      new CExpr[String](expr).apply("")(new StaticECtx())
+    } else newpath
+
     clog << "diesel/proxy GET " + path
     val host = ipath.split("(?<![/:])/", 2).head
     val p = if (ipath startsWith("https")) "https" else "http"
-    val sc = SnakkCall(p, "GET", path, Map.empty, "").setUrl(Snakk.url(path))
+    val sc = SnakkCall(p, "GET", path, Map.empty, "", None).setUrl(Snakk.url(path))
     val ec = sc.eContent
     Ok(ec.body)
         .as(ec.contentType)
@@ -1432,13 +1437,30 @@ class DomApi extends DomApiBase with Logging {
   }
 
   /** proxy real service GET */
-  def proxyPost(ipath: String) = FAUPRAPI(true) { implicit stok =>
-    val  path = Enc.fromUrl(ipath + "?" + stok.ireq.rawQueryString)
-    clog << "diesel/proxy POST " + path
+  def dieselProxyPost(ipath: String) : Action[RawBuffer] = Action(parse.raw) { implicit request =>
+    val stok:RazRequest = razRequest(request)
+    val au = activeUser(stok.ireq, stok.errCollector);
+    val b  = au.filter(deemedMemberOfRealm(_, stok.realm))
+
+    assert (b.isDefined)
+
+    val newpath = Enc.fromUrl(ipath + "?") + stok.ireq.rawQueryString
+    val path = if(newpath.contains("""${""")) {
+      // todo security hole - they can evaluate expressions and retrieve stuff by trying to proxy to an echo /diesel/proxy/http://myechoqp.com?p1=${diesel.user} etc
+      // since this is always wiht a user creds, i don't see what they could find though...?
+      val expr = "\"" + newpath + "\""
+      new CExpr[String](expr).apply("")(new StaticECtx())
+    } else newpath
+
+    val raw = request.body.asBytes()
+    val body = raw.map(a => new String(a.toArray)).getOrElse("")
+
+    clog << "diesel/proxy POST " + path + " WITH BODY:\n" + body
+
     val host = ipath.split("(?<![/:])/", 2).head
     val p = if (ipath startsWith("https")) "https" else "http"
-    val headers = stok.ireq.headers.toSimpleMap
-    val sc = SnakkCall(p, "POST", path, headers, "")
+    val headers = stok.ireq.headers.toMap.map(t=>(t._1, t._2.toList))
+    val sc = SnakkCall(p, "POST", path, headers, body, None)
     try {
       val ec = sc.eContent
       Ok(ec.body)
@@ -2098,6 +2120,13 @@ class DomApi extends DomApiBase with Logging {
       retj << m
     }
 
+  }
+
+  /** set user's preferred current environment */
+  def getEnv = Filter(activeUser).async { implicit stok =>
+    val au = stok.au.get
+    val e = au.getPrefs("dieselEnv", "")
+    Future.successful(Ok(e).as("text/plain"))
   }
 
   /** set user's preferred current environment */

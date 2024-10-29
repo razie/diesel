@@ -75,6 +75,27 @@ class AdminSysCtl @Inject() (notesCtl:NotesLocker) extends AdminBase {
     }
   }
 
+  // unsecured ping for
+  def adminUser() = Action { implicit request =>
+    val stok:RazRequest = new RazRequest(request)
+    val au = stok.au
+    val res = stok.au.map {u=>
+          Map(
+            "user" -> Map(
+              "userName" -> u.userName,
+              "authClient" -> u.authClient,
+              "authMethod" -> u.authMethod.mkString,
+              "groups" -> u.groups.map(_.name).mkString,
+              "reactors" -> u.memberReactors
+            )
+          )
+    }.getOrElse(Map(
+      "user" -> "n/a"
+    ))
+
+     Ok(razie.js.tojsons(res)).as("application/json").withHeaders("Access-Control-Allow-Origin" -> "*")
+  }
+
 
   def config2(what: String) = config(what)
 

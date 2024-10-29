@@ -743,10 +743,19 @@ glyphicon-question-sign"></span></a></sup>: <a href="/diesel/guard/runCheck">Re-
   }
 
   /** run another check current reactor */
-  def dieselRunCheck(tq: String, format: String, wait: String, storyRealm: String) = Filter(activeUser).async
-  { implicit stok =>
+  def dieselRunCheck(tq: String, wpath:String, format: String, wait: String) = Filter(activeUser).async { implicit stok =>
+
     if (DomGuardian.enabled(stok.realm)) {
-      val x@(f, e, _) = startCheck(stok.realm, stok.au, tq, Some(DomEngineHelper.settingsFrom(stok)))
+      val q = stok.query
+
+      val x@(f, e, _) = startCheck(
+        stok.realm,
+        stok.au,
+        tq,
+        Some(DomEngineHelper.settingsFrom(stok)),
+        q,
+        (if(wpath.length <= 0) None else Some(wpath)),
+      )
 
       if (wait.isEmpty || !wait.toBoolean) {
         Future.successful(

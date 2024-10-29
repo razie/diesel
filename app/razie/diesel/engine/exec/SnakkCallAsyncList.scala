@@ -32,12 +32,13 @@ object SnakkCallAsyncList extends Logging {
       clean
       calls.append(rec)
     }
-    sc.pro.get.future
+    sc.promise.get.future
   }
 
   /** next req waiting for host */
   def next(env:String, host:String) : Option[(String, SnakkCall)] = {
     calls.synchronized {
+      log("SNAKKPROXY ASCL get " + env + " - " + host)
       clean
       val idx = calls.indexWhere(x=>(host == "*" || x.sc.url.startsWith(host)) && (env == "*" || x.sc.env == env))
       if(calls.size > 0 && idx >= 0) {
@@ -59,7 +60,7 @@ object SnakkCallAsyncList extends Logging {
         val rec = inProgress.remove(id)
         rec.map {rec=>
           info("SNAKKPROXY  Completing - found" + id)
-          rec.sc.pro.foreach(_.success(resp))
+          rec.sc.promise.foreach(_.success(resp))
           clean
           true
       } getOrElse {

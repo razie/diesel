@@ -6,7 +6,7 @@
 package razie.diesel.engine
 
 import razie.Logging
-import razie.diesel.dom.RDOM.P.{asSimpleString, asString}
+import razie.diesel.dom.RDOM.P.{asSimpleString, asString, isSimpleType}
 import razie.diesel.dom.RDOM._
 import razie.diesel.dom.{RDomain, _}
 import razie.diesel.engine.exec.Executors
@@ -34,7 +34,6 @@ object DomDocs extends Logging {
   case class WeRule(override val node: BaseAstNode, override val row: Integer) extends WElem(node, row)
 
   case class WeAnno(override val node: BaseAstNode, override val row: Integer) extends WElem(node, row)
-
 
 
   /** summary cache entry for a WE */
@@ -160,11 +159,11 @@ object DomDocs extends Logging {
     }
 
 
-    def isHeading(ast: BaseAstNode) = ast.s.contains("\n#")
+    private def isHeading(ast: BaseAstNode) = ast.s.contains("\n#")
 
-    def key(p: BaseAstNode) = p.keyw.getOrElse("")
+    private def key(p: BaseAstNode) = p.keyw.getOrElse("")
 
-    def posneg(p: BaseAstNode) = p.pos.map(_.pos.line).getOrElse(-1)
+    private def posneg(p: BaseAstNode) = p.pos.map(_.pos.line).getOrElse(-1)
 
     /** @return (summary, details, annotations) */
     def docsForElementAt(row: Integer, we: WikiEntry): (String, String, List[WeAnno]) = {
@@ -514,18 +513,54 @@ object DomDocs extends Logging {
     p.flatMap(p => WID.fromPath(p.wpath, realm).flatMap(Wikis.find))
   }
 
+  private def isDsl (line:String) = {
+    val lt = line.trim
+      lt.startsWith("$") ||
+      lt.startsWith("=") ||
+      lt.startsWith("#") ||
+      lt.startsWith("@") ||
+      lt.startsWith(")") ||
+      lt.startsWith("-") ||
+      lt.startsWith("}")
+  }
+
   /** extract the docs preceeding the element
     *
     * this is all the docs preceeding the element, up to another element OR heading */
-  def wikiDocsFor(p: Option[EPos], realm: String): Option[(String, String)] = {
+  def wikiDocsFor(p: Option[EPos], realm: String, format:Boolean=false): Option[(String, String)] = {
     wikiFor(p, realm).flatMap { w =>
-      val text = w.parsed
+//      val text = w.parsed
+//      val lines = text.lines.toList
+//      lines.headOption.map(x => (x -> text))
+      val text = w.content
       val lines = text.lines.toList
-      lines.headOption.map(x => (x -> text))
+      var idx=p.get.line-1 // definition itself
+      val buf = new ListBuffer[String]()
+      var collecting = false
+      while (idx >= 0) {
+        val line = lines(idx)
+        idx = idx -1
+        if(collecting) {
+          if (isDsl(line)) idx = -1 // stop
+          else {
+            if (true||line.trim.length > 0) buf.append(line)
+          }
+        } else {
+          if (isDsl(line)) {} // keep going back
+          else {
+            collecting = true
+            if (true||line.trim.length > 0) buf.append(line)
+          }
+        }
+      }
 
-      // todo not that easy - there's empty lines etc
+      // todo clean pre/aft empty lines in buf
+
+      val res = if(buf.size > 0) Some("" -> buf.reverse.mkString("\n"))
+      else None
+
+      if(format) res.map(t=> (t._1, Wikis.sformat(t._2, "md", realm)))
+      else res
     }
-
   }
-
 }

@@ -15,7 +15,15 @@ import razie.diesel.expr.ECtx
 import razie.snakked.SnakkProxyRemote
 import razie.wiki.Services
 
-/** control the built-in snakk proxy */
+/** control the built-in snakk proxy
+  *
+  *  $send diesel.proxy.start(
+  *    name="107",
+  *    dests="elastic:9200,kibana:5601,spark-hl.netlinq.svc.cluster.local:4041,toc-headless:7001,localhost:9000",
+  *    sources="www.dieselapps.com"
+  *    )
+  *
+  * */
 class EESnakkProxy extends EExecutor("diesel.proxy") {
   val DT = "diesel.proxy"
 
@@ -121,6 +129,18 @@ https://www.dieselapps.com/snakk/proxy/107/http/spark-hl.netlinq.svc.cluster.loc
           })
 
           OK
+        } else {
+          List(
+            EVal(P.fromTypedValue(Diesel.PAYLOAD, "ERR - not isLocalhost"))
+          )
+        }
+      }
+
+      case "diesel.proxy.stats" => {
+        if (Services.config.isLocalhost) this.synchronized {
+          List(
+            EVal(P.fromTypedValue(Diesel.PAYLOAD, SnakkProxyRemote.isActive))
+          )
         } else {
           List(
             EVal(P.fromTypedValue(Diesel.PAYLOAD, "ERR - not isLocalhost"))
