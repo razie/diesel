@@ -52,7 +52,9 @@ object RDOM {
     }
   }
 
-  class Anno (val p:List[P]) extends DE
+  class Anno (val p:List[P]) extends DE {
+    override def toString = "Anno "+p.mkString
+  }
 
   private def classLink(s: String): String = s"""<b><a href="/wikie/show/Category:$s">$s</a></b>"""
 
@@ -99,7 +101,7 @@ object RDOM {
           smap(typeParam)(" [" + _ + "]") +
           smap(archetype)(" &lt;" + _ + "&gt;") +
           smap(stereotypes)(" &lt;" + _ + "&gt;") +
-          (if (base.exists(_.size > 0)) "extends " else "") + base.map(classLink).mkString +
+          (if (base.exists(_.size > 0)) " extends " else "") + base.map(classLink).mkString +
           mksAttrs(parms, Some({ (p: P) =>
             (if(isSimpleType(p)) "<small>" + qspan(invname, conn, p.name) + "</small> " else "") +
                 p.toHtml(
@@ -386,6 +388,12 @@ object RDOM {
 
             case WType(WTypes.MSG, _, _, _) => new P(name, s, expectedType)
 
+            case WType(WTypes.URL, _, _, _) => new P(name, s, expectedType)
+
+            case WType(WTypes.PASSWORD, _, _, _) => new P(name, s, expectedType)
+
+            case WType(_, _, _, true) => new P(name, s, expectedType) // a ref to smth else
+
             case _ if expectedType.trim.length > 0 =>
               throw new DieselExprException(s"$expectedType is an unknown type")
 
@@ -396,7 +404,7 @@ object RDOM {
         // java object - it's better to create this yourself
         case x@_ if expectedType == WTypes.OBJECT => new P(name, "", expectedType).withValue(v, expectedType)
 
-        case x@_ => new P(name, x.toString, WTypes.wt.UNKNOWN)
+        case x@_ => new P(name, x.toString, WTypes.wt.UNKNOWN).withValue(x.toString, WTypes.wt.UNKNOWN)
       }
 
       // assert expected type if given
@@ -570,9 +578,18 @@ object RDOM {
                stereotypes:String = ""
               ) extends CM with CanHtml with razie.HasJsonStructure {
 
-    def copyFrom(other: P): P = {
+    def copyValueFrom(other: P): P = {
       this.value = other.value
       this
+    }
+
+//    def copyTypeFrom(other: P): P = {
+//      this.ttype = other.ttype
+//      this
+//    }
+
+    def withName(newName: String) = {
+      this.copy(name = newName)
     }
 
     def withValue[T](va: T, ctype: WType = WTypes.wt.UNKNOWN) = {
@@ -809,6 +826,7 @@ object RDOM {
               if (WTypes.NUMBER == ttype.name) s
               else if (WTypes.ARRAY == ttype.name && short) "[..]"
               else if (WTypes.ARRAY == ttype.name && !short) s
+              else if (WTypes.PASSWORD == ttype.name) "*******"
               else if (WTypes.JSON == ttype.name && short) "{..}"
               else if (WTypes.JSON == ttype.name && !short) {
                 "<pre>" + shorten(js.tojsons(value.get.asJson), 2000) + "</pre>" //.replaceAll("\n", "<br>")
