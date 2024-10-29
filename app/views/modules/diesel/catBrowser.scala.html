@@ -4,13 +4,12 @@ browse a domain
 @import razie.diesel.dom.RDOM
 @(plugin:String, conn:String, realm:String, page:Option[razie.wiki.model.WikiEntry], cat:String, middle:List[String], left:List[RDOM.A], right:List[RDOM.A])(mkLink:(String,String,Option[RDOM.A])=>String)(implicit stok: controllers.StateOk)
 
-@stok.title("Category browser: "+cat)
+@stok.title(cat + "- category browser")
 
-@modules.diesel.browser(plugin, conn, realm, cat, middle, left, right)(mkLink)
+@modules.diesel.domBrowserInt(plugin, conn, realm, cat, middle, left, right)(mkLink)
 
   <div class="col-sm-12">
   @page.map { we =>
     @wiki.wikiFrag(we.wid, None, false, Some(we))
   }
 </div>
-

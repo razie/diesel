@@ -1,29 +1,52 @@
 @**************
-browse a domain
+show an existing object or just category
 **************@
 @import razie.diesel.dom.RDOM
 @import play.twirl.api.TemplateMagic.defining
 @(realm:String, cat:String, middle:List[String], left:List[RDOM.A], right:List[RDOM.A], o:Option[RDOM.O]=None)(mkLink:(String,String,Option[RDOM.A])=>String)(implicit stok: controllers.StateOk)
 @import razie.diesel.dom.DomInventories
 @import razie.diesel.dom.WikiDomain
+@import razie.diesel.engine.DomDocs
 
-@stok.title("Category browser: "+cat)
+@stok.title(cat+o.map(x=> " : " + x.name).mkString + " - category browser")
 
 <script src="@routes.Assets.at("javascripts/weDieselDom.js")"></script>
 
-@modules.diesel.browser("diesel", realm, realm, cat, middle, left, right)(mkLink)
+@modules.diesel.domBrowserInt("diesel", realm, realm, cat, middle, left, right)(mkLink)
 
 <div class="col-sm-12">
 @defining(WikiDomain(realm)) { wd =>
   @wd.rdom.classes.get(cat).map { c =>
-    @defining(wd.findInventoriesForClass(c)) { inv =>
-  <div align="right"><small>@Html(DomInventories.htmlActions(realm, c, o.flatMap(_.ref)))</small></div>
+
+    @DomDocs.wikiDocsFor(c.pos, realm, format = true).map{docs=>
+      @Html(docs._2)
+      <p></p>
+    }
+
+    @if(wd.canAccess(c, o, stok.au.map(_.emailDec), stok.au.map(_.allPerms))) {
+      @defining(wd.findInventoriesForClass(c)) { inv =>
+
+        @** actions *@
+  <div align="right">
+    <div class="pull-left">
+      <small><a href="/wikie/edit/@{realm}.CategoryTemplate:@cat"><span class="glyphicon glyphicon-edit" title="Create a template for these objects to customize display!"></span></a>
+        &nbsp;&nbsp;<a style="font-size: 20px" onclick="javascript:weToggleBrowser(); return false;"><span class="glyphicon glyphicon-road" title="Toggle dom browser guidance"></span></a>
+      </small></div>
+    <small>@Html(DomInventories.htmlActions(realm, c, o.flatMap(_.ref)))</small></div>
       <div class="well">
+        @** body of object *@
       @Html(o.map(_.fullHtml(inv.headOption)).getOrElse(c.fullHtml(inv.headOption)))
       </div>
     @wiki.wikiAddMore(razie.wiki.model.WID("Category", cat).r(realm), None)
+
     } @* defining *@
+    } else {
+      <div class="alert alert-danger">
+        You are not in the dieselAccessGroup: <em>@o.flatMap(_.parms.find(_.name == "dieselAccessGroup").map(_.currentStringValue)).mkString </em>
+      </div>
+    }
   }.getOrElse{
+
     @if(WikiDomain.isPrimaryType(cat)) {
     Class <b>@cat</b> is a primary type (built-in).
       <br>

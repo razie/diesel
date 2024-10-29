@@ -7,12 +7,13 @@ Create a domain object / cat
 @(plugin:String, conn:String, realm:String, cat:String, left:List[RDOM.A], right:List[RDOM.A], domain:WikiDomain, currValues:List[(String,RDOM.P)], errors:Map[String,String])(mkLink:(String,String,Option[RDOM.A])=>String)(implicit stok: controllers.StateOk)
 @import mod.diesel.model.Diesel
 
-@stok.title("Category browser: "+cat)
+@stok.title(cat + " - category browser")
+
+@hasRecalc(c:Option[RDOM.C]) = @{c.exists(_.parms.exists(_.stereotypes.contains("excache")))}
 
 <script src="@routes.Assets.at("javascripts/weDieselDom.js")"></script>
 
-@modules.diesel.browser("diesel", realm, realm, cat, Nil, left, right)(mkLink)
-
+@modules.diesel.domBrowserInt("diesel", realm, realm, cat, Nil, left, right)(mkLink)
 
 <div class="col-sm-12">
   @domain.rdom.classes.get(cat).map{c=>
@@ -29,12 +30,12 @@ Create a domain object / cat
 
         @wiki.wikiFormInt(page.wid, None, Some(page), errors, true, false)
 
-        @if(page.form.canEdit){
+        @if(page.form.canEdit && hasRecalc(Some(c))) {
           <a href="javascript:weDomRecalculateFormData()" class="btn btn-info">Recalculate</a>
+        }
           <input type="submit" name="save_button" value="Save for later" class="btn btn-info">
           <input type="submit" name="submit_button" value="Submit" class="btn btn-success">
           <strong>Please <font style="color:red">save or submit</font> before leaving this page!</strong>
-        }
 @*//        @if(stok.au.exists(isClubAdmin(_)) && page.form.canBeApproved) {*@
           @*<input type="submit" name="approve_button" value="Approve" class="btn btn-success">*@
 @*//        }*@
@@ -47,6 +48,10 @@ Create a domain object / cat
 
       </form>
       <script>
+
+recalculatedNames = '@{domain.rdom.classes.get(cat).get.parms.filter(_.stereotypes.contains("excache")).map(_.name).mkString(",")}';
+recalculated = recalculatedNames.split(",");
+
 require(['jquery', 'weCommons'], function($) {
 
   function getFormData($form){
@@ -93,6 +98,13 @@ require(['jquery', 'weCommons'], function($) {
         alert(data);
       }
     });
+  }
+
+  @if(page.form.canEdit && hasRecalc(domain.rdom.classes.get(cat))) {
+    $("form#myForm :input[type=text]").on( "blur", function() {
+      if(! recalculated.includes($(this).attr("name")))
+        weDomRecalculateFormData();
+    } );
   }
 
   $("form#myForm").submit(function(e){

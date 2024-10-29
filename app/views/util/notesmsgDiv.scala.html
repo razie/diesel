@@ -6,8 +6,8 @@ insert a div (at top of screen) for flashing error messages or stats etc
 <small>
 &nbsp; &nbsp; &nbsp; &nbsp;
 
-  <div id="messages" style="float:right; margin-top:10px;" class="">
-    <div id="@name" style="display:none;" class="alert alert-info">
+  <div id="messages" style="word-wrap:normal;float:right; margin-top:10px;" class="">
+    <div id="@name" style="word-wrap:normal;display:none;" class="alert alert-info">
     </div>
   </div>
 </small>
@@ -20,6 +20,8 @@ var notesMsgShow = function(){};
     $('#@name').hide();
 
     notesMsgShow = function(kind,text) {
+
+      console.log ("ALERT ("+kind+") :"+text);
 
       $('#@name').removeClass('alert-info');
       $('#@name').removeClass('alert-danger');
@@ -39,6 +41,8 @@ var notesMsgShow = function(){};
       $('#@name').show();
 
       $('#@name').fadeOut(5000);
+      $('#@name').css('z-index', '-1');
+      $('#notesmsgDiv').css('z-index', '-1');
     }
   });
 

@@ -1,0 +1,61 @@
+@**************
+browse a domain
+**************@
+@import razie.diesel.dom.RDOM
+@(plugin:String, conn:String, realm:String, cat:String, middle:List[String], left:List[RDOM.A], right:List[RDOM.A])(mkLink:(String,String,Option[RDOM.A])=>String)
+
+@height()=@{
+  if(left.size < 3 && middle.size < 3 && right.size < 3) "80px"
+  else if(left.size > 5 || middle.size > 5 || right.size > 5) "200px"
+  else if(left.size > 20 || middle.size > 20 || right.size > 20) "600px"
+  else "130px"
+}
+
+@** you can only have the dom browser or the weBrowser on one page - they share the same spot *@
+
+<div class="row" id="wikiBrowser" style="display: none">
+  <div class="col-sm-5 alert alert-info" title="Entities referencing towards this one" style="height: @height(); overflow-y: auto; vertical-align: middle; text-align: right;">
+          @left.distinct.map { assoc =>
+            @if(assoc.zRole.length > 0) {
+              <small>(@assoc.zRole)</small>
+            }
+            <a href="@mkLink(assoc.a, "from", Some(assoc))"><b>@assoc.a</b></a><br>
+          }
+  </div>
+
+  <div class="col-sm-2 alert alert-info" style="height: @height(); vertical-align: middle; text-align: center;">
+    @*
+    @middle.distinct.map { a =>
+    <a href="@mkLink(a, "", None)"><b>@a</b></a><br>
+    }
+    <span style="top: 30px; position:relative"><b>@cat</b></span>
+    *@
+
+    <span style="margin-top:-10px; position:relative"><b> <a href="@mkLink(cat, "", None)"><b>@cat</b></a> </b></span><br>
+  <span style="margin-top:-10px; position:relative"><b> <---> </b></span>
+
+  </div>
+
+  <div class="col-sm-5 alert alert-info" title="Entities referenced by this one" style="height: @height(); overflow-y: scroll; vertical-align: middle; text-align: left;">
+    <button type="button" class="close" onclick="weToggleBrowser();" aria-label="Close" title="Close browser">
+      <span class="glyphicon glyphicon-remove"></span>
+    </button>
+        @right.distinct.sortBy(_.z).map { assoc =>
+          <a href="@mkLink(assoc.z, "to", Some(assoc))"><b>@assoc.z</b></a>
+          @if(assoc.zRole.length > 0) {
+            <small>(@assoc.zRole)</small>
+          }
+          <br>
+        }
+  </div>
+</div>
+
+<script>
+  razOnLoad(function(){
+    if('@cat' == 'Domain') {
+      weForceBrowser();
+    } else {
+      weShowHideBrowser("true");
+    }
+  });
+</script>
