@@ -8,10 +8,12 @@ package razie.wiki.model
 
 import com.mongodb.casbah.Imports._
 import mod.diesel.model.Diesel
+import razie.clog
 import razie.base.data.TripleIdx
 import razie.diesel.dom.WikiDomain
 import razie.wiki.Services
 import razie.wiki.admin.GlobalData
+import razie.wiki.model.features.WeCache
 import scala.collection.mutable.{HashMap, ListBuffer}
 
 /**
@@ -35,25 +37,29 @@ class WikiIndex (val realm:String, val fallBacks : List[WikiIndex]) {
   val mixins = new Mixins[WikiIndex](fallBacks)
 
   /** the index is (name, (WID, ID)*)* with multiple WIDs per name */
-  private lazy val actualIndex : TripleIdx[String, WID, ObjectId] = load
+  private var actualIndex : TripleIdx[String, WID, ObjectId] = null
 
-  /** load it the first time */
+  /** load it the first time - go straight to db to load fast */
   private def load = {
+    clog << "------------ Loading WikiIndex " + realm
+
     // todo should this be sync'd ?
     /** the index is (name, (WID, ID)*)* with multiple WIDs per name */
     val t = new TripleIdx[String, WID, ObjectId]()
 
+    // in db we won't have cat as Realm.Cat
+    def getr (r:String) = if(r.length > 0) Some(r) else Some(Wikis.RK)
+
     // avoid parsing each
     Wikis(realm).foreach { db =>
-      val iw = WID(
+      val w = WID(
         db.as[String]("category"),
         db.as[String]("name"),
         if (db.containsField("parent")) Some(db.as[ObjectId]("parent")) else None,
-        None
-      ).r(db.as[String]("realm"))
+        None,
+        getr(db.as[String]("realm"))
+      )
 
-      // RK is just one other realm
-      val w = if(iw.realm.isDefined) iw else iw.r(Wikis.RK)
       t.put(w.name, w, db.as[ObjectId]("_id"))
       lower.put(w.name.toLowerCase(), w.name)
       labels.put(w.name, db.as[String]("label"))
@@ -70,14 +76,31 @@ class WikiIndex (val realm:String, val fallBacks : List[WikiIndex]) {
     t
   }
 
+  private def getActualIndex : TripleIdx[String, WID, ObjectId] = {
+    if(actualIndex == null) {
+      // todo man i'm lazy - won't work for more than 3 levels of defaults
+
+      // load base outside of synchronized to avoid deadlock with fallbacks referencing me
+      fallBacks.flatMap(_.fallBacks).foreach(_.getActualIndex) // load the lazy thing -
+      fallBacks.foreach(_.getActualIndex) // load the lazy thing
+
+      synchronized {
+        if(actualIndex == null) {
+          actualIndex = load
+          // todo when done loading, should invalidate WeCache
+          //WeCache.
+          //WikiCache.remove()
+        }
+      }
+    }
+    actualIndex
+  }
+
   /** the index is (name, WID, ID) */
   def withIndex[A](f: TripleIdx[String, WID, ObjectId] => A) = {
-
+    val x = getActualIndex // out of sync to not deadlock with fallbacks
     synchronized {
-      // todo man i'm lazy - won't work for more than 3 levels of defaults
-      fallBacks.flatMap(_.fallBacks).map(_.actualIndex) // load the lazy thing -
-      fallBacks.map(_.actualIndex) // load the lazy thing
-      f(actualIndex)
+      f(x)
     }
   }
 
