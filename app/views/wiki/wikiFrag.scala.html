@@ -186,6 +186,12 @@ function selectTextareaLine(tarea,lineNum) {
                 }
               }
 
+              @if(stok.au.nonEmpty && page.exists(_.isOneOf(Array("CategoryTemplate")))) {
+               &nbsp;<small>
+                  <a class="" title="Open in browser" href="/wiki/Category:@{wid.name}"><i class="glyphicon glyphicon-road"></i></a>
+                </small>
+              }
+
               @if(stok.au.nonEmpty && page.exists(_.isOneOf(Array("Spec", "Story")))) {
                   &nbsp;<small>
                   <a class="" title="Edit this" href="javascript:doEditThis()"><i class="glyphicon glyphicon-edit"></i></a>
@@ -202,8 +208,15 @@ function selectTextareaLine(tarea,lineNum) {
                   &nbsp;<small>
                   <a class="" title="Open in fiddle" href="/diesel/fiddle/playDom?story=@{wid.wpath}"><i class="glyphicon glyphicon-th-large"></i></a>
                 </small>
+                  &nbsp;<small>
+                  <script>
+                    function runStory() {
+                      window.location.href='/diesel/guard/runStory/@{wid.wpath}'+window.location.search;
+                    }
+                  </script>
+                  <a class="" title="Run test!" href="javascript:runStory();"><i class="glyphicon glyphicon-forward"></i></a>
+                </small>
               }
-
 
               @** page info **@
               @** @if(stok.au.exists(_.isMod)) { **@
@@ -214,7 +227,7 @@ function selectTextareaLine(tarea,lineNum) {
 
               @if( ! (Seq("WikiLink", "Form").contains(wid.cat) || page.exists(_.contentProps.contains("noSocial")))) {
                 @if(stok._showSocial) {
-                  <a class="btn btn-xs btn-info" href="@routes.Wiki.social(label(), url())">Share <span class="glyphicon glyphicon-thumbs-up icon-white"></span></a>
+                  &nbsp; <a class="btn btn-xs btn-info" href="@routes.Wiki.social(label(), url())">Share <span class="glyphicon glyphicon-thumbs-up icon-white"></span></a>
                 }
                 <br>
 
@@ -293,8 +306,9 @@ function selectTextareaLine(tarea,lineNum) {
 
         <br><br>
         <form action="@routes.Wikie.edit2" method="GET" class="well form-inline">
-          <input type="text" name="name" id="name" value="@nicename">
-          <select id="cat" name="cat" class="input-small">
+          Realm: <input type="text" name="realm" id="realm" value="@(wid.realm.getOrElse(stok.realm))" readonly>
+          Name: <input type="text" name="name" id="name" value="@nicename">
+          Category: <select id="cat" name="cat" class="input-small">
 
           @prepend(razie.diesel.dom.WikiDomain.rootCats(wid.getRealm).filter(_ != favoriteCat).sortWith(_ < _), favoriteCat).map{x=>
             <option value="@x" >@x</option>

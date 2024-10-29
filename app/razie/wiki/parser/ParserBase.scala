@@ -116,7 +116,7 @@ trait ParserBase extends ParserCommons {
   //  """(?s)[^`]*""".r ~ "```" ^^ {
 
   // ``` blocks
-  def escaped2: PS = "```" ~ opt("js" | "scala" | "xml" | "html" | "diesel" | "sh" | "java") ~
+  def escaped2: PS = "```" ~ opt("js" | "scala" | "xml" | "html" | "diesel" | "sh" | "java" | "cli") ~
       opt(CRLF1 | CRLF3 | CRLF2) ~ """(?s).*?```""".r ^^ {
 
     case a ~ name ~ _ ~ bb => {

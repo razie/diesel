@@ -22,6 +22,7 @@ object ParseWLink {
   val NORMAL = """(rk:)?([^|\]]*)([ ]*[|][ ]*)?([^]]*)?""".r       // [[rk.Topic:name]]
   val BROWSE = """browse:([^|\]]*)([ ]*[|][ ]*)?([^]]*)?""".r      // [[browse:rk.Topic:name]]
   val ROLE = """([^:]*::)?([^|\]]*)([ ]*[|][ ]*)?([^]]*)?""".r     // [[enabler::rk.Topic:name]]
+  val DOM = """dom:([^|\]]*)([ ]*[|][ ]*)?([^]]*)?""".r            // [[dom:rk.Topic:name]]
 
   def apply(realm:String, repf: (String => String), input: String): Option[(String, Option[ILink])] = {
     var i: Option[ILink] = None
@@ -36,6 +37,15 @@ object ParseWLink {
 
       case MSG(ea) =>
         Some(s"""<a href="/diesel/msg/$ea">$ea</a>""", None)
+
+      case DOM(wpath, _, label) => {
+        val wid = WID.fromPath(wpath.trim, realm)
+        wid.map { w =>
+          Some(s"""<a href="/diesel/dom/browse/${w.cat}/${w.name}">${w.name}</a>""", None)
+        }.getOrElse {
+          Some("Can't parse reference ", None)
+        }
+      }
 
       case LIST(newr, cat) => Some({
         val newRealm =

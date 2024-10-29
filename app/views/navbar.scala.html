@@ -41,8 +41,9 @@ creates the navigation bar
 }
 
 @menuBadges()=@{
-  if(stok.au.exists(_.isAdmin)) web().navMenu ++ Seq("admin.badgeRefreshAllTests" -> "/diesel/guard/statusAll")
-  else web().navMenu
+//  if(stok.au.exists(_.isAdmin)) web().navMenu ++ Seq("admin.badgeRefreshAllTests" -> "/diesel/guard/statusAll")
+//  else
+  web().navMenu
 }
 
 @if(web().prop("theme.navbar").exists(_.contains("light"))) {
@@ -68,7 +69,7 @@ creates the navigation bar
 }
   </div>
 
-  <div style="position: absolute; z-index: 10001; margin-top: 10px" class="col-sm-12 col-lg-8 col-md-10">
+  <div style="word-wrap: normal; position: absolute; z-index: 10001; margin-top: 10px;" class="col-sm-12 col-lg-8 col-md-10" id="notesmsgDiv">
   @if(stok.msg.nonEmpty) {
     @util.notesmsgDiv("notesmsg")
     @util.notesmsgShow("notesmsg", stok.msg)
@@ -129,9 +130,13 @@ require(['jquery'], function($){
           } else {
             <li>
               @if(t._2.startsWith("javascript:")) {
-                  <a href onclick="@t._2">@Html(label)</a>
+                <a href onclick="@t._2">@Html(label)</a>
               } else {
+                @if(t._2.startsWith("html:")) {
+                  @Html(t._2.replaceFirst("html:", ""))
+                } else {
                   <a href="@t._2">@Html(label)</a>
+                }
               }
             </li>
           }
@@ -382,11 +387,13 @@ require(['jquery'], function($){
       @if((stok.au.exists(_.isMod) || stok.isLocalhost) && web().prop("diesel.envList").isDefined) {
         <ul class="nav navbar-nav pull-right">
           <li class="dropdown">
-            <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false" style="color: orange;
-              font-weight: bold;
-              font-size: small" title="change environment">
-              @api.wix.dieselEnvFor(stok.realm, stok.au) <span class="caret"></span>
-            </a>
+            @defining(if("local"==api.wix.dieselEnvFor(stok.realm, stok.au)) "green" else "orange") { ecolor =>
+              <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-expanded="false" style="color: @ecolor;
+                font-weight: bold;
+                font-size: small title="change environment">
+                @api.wix.dieselEnvFor(stok.realm, stok.au) <span class="caret"></span>
+              </a>
+            }
             <ul class="dropdown-menu" role="menu">
             @web().dieselEnvList.split(",").map { t =>
               <li><a href="javascript:doSetEnv('@t')">@t</a></li>
@@ -501,7 +508,7 @@ require(['jquery'], function($){
       doSetEnv = function(r) {
         $.ajax(
             '/diesel/setEnv/' + r, {
-              type: 'GET',
+              type: 'POST',
               success: function(data) {
                 location.reload();
               },
@@ -511,17 +518,17 @@ require(['jquery'], function($){
             });
       };
 
-      doSetEnv = function(r) {
-        $.ajax(
-            '/diesel/setEnv/' + r, {
-              type: 'GET',
-              success: function(data) {
-                location.reload();
-              },
-              error  : function(x) {
-                location.reload();
-              }
-            });
+      doGetEnv = function(r, f) {
+        $.ajax({
+          url: '/diesel/getEnv/' + r,
+          type: 'GET',
+          success: function(data) {
+            f(data);
+          },
+          error  : function(x) {
+            console.log ("ERROR /diesel/getEnv: " +x);
+          }
+        });
       };
 
       @*$('#resultdiv_'+@id).css('max-height', $('#pre3box_@id').height()+'px');*@

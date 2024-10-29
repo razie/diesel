@@ -171,7 +171,13 @@ Started at: @{e.createdDtm}
   <br>
 
   @if(e.root.children.exists(x=> x.kind == "story")) {
-<b>Summary:</b> @e.failedTestCount / @e.successTestCount / @e.totalTestCount / @e.todoTestCount (fail/succ/total/todo) (duration: @{e.duration/1000} s) (<a href="/diesel/viewAst/@eng.get.id?format=junit">junit</a>)
+    @if(e.failedTestCount > 0) {
+    <b>
+      Summary:</b> <span class="label label-danger">@e.failedTestCount / @e.successTestCount / @e.totalTestCount / @e.todoTestCount (fail/succ/total/todo)</span> (duration: @{e.duration / 1000} s) (<a href="/diesel/viewAst/@eng.get.id?format=junit">junit</a>)
+    } else {
+    <b>
+      Summary:</b> <span class="label label-success">@e.failedTestCount / @e.successTestCount / @e.totalTestCount / @e.todoTestCount (fail/succ/total/todo)</span> (duration: @{e.duration / 1000} s) (<a href="/diesel/viewAst/@eng.get.id?format=junit">junit</a>)
+    }
 <br>
 <pre>
 @Html(DomEngineView.storySummary(e.root))

@@ -1059,18 +1059,31 @@ function fiddle_storyChanged(storyhaschanged) {
 }
 
 function setSpec(what) {
+  @*var sp = (what == "Spec" && specWpath.length > 0) ? '?selected=@WID.fromPath(specWpath).map(_.name)':"";*@
+  @*var st = (what == "Story" && storyWpath.length > 0) ? '?selected=@WID.fromPath(storyWpath).map(_.name)':"";*@
+  var sp = (what == "Spec" && specWpath.length > 0) ? '@WID.fromPath(specWpath).map(_.name)':"";
+  var st = (what == "Story" && storyWpath.length > 0) ? '@WID.fromPath(storyWpath).map(_.name)':"";
+  var sel = (what == "Story") ? st:sp;
   $.ajax(
-    '/diesel/fiddle/domListCat/@reactor/'+what, {
+    '/diesel/fiddle/domListCat/@reactor/'+what+"", {
       type: 'GET',
       success: function(data) {
         var title = "Select " + what;
         if(what == "Story") title = title + " - <small>(or click on spec to set both)</small>"
         popupContent(title + "<br><br>" + data);
+        setTimeout(function(){
+          $('.modal-body').scrollTop(0);
+          $('.modal-body').scrollTop($("td:contains('"+sel+"')").parent('tr').offset().top - $('.modal-body').height()/2);
+        }, 200);
       },
       error  : function(x) {
         popupContent("ERR... can't set spec<p>"+x);
       }
     });
+}
+
+function nogoodnic(){
+  console.log("");
 }
 
 function popupMenu1(what) {

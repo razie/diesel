@@ -273,7 +273,7 @@ withJquery(function($) {
 
   $("#draft").change(checkDraft);
 
-  console.log("START - timeStamp:"+timeStamp+" - hasDraft:"+@hasDraft + " - ver:" + @{wid.page.map(_.ver)} );
+  console.log("START - timeStamp:"+timeStamp+' - hasDraft: @{hasDraft} - ver: @{wid.page.map(_.ver)}' );
 
   if (localStorage.getItem("weDsl") != 'undefined')
     $('#' + "weDsl").prop('checked', localStorage.getItem("weDsl") === 'true');
@@ -1087,7 +1087,7 @@ fiddle_showCapture = function (id, data) {
 
   // it's on load because otherwise the div has no contents
   $(window).on('load', function() {
-    setupLogLevels(fiddleId);
+    if(typeof fiddleId != 'undefined') setupLogLevels(fiddleId);
   });
 
 </script>

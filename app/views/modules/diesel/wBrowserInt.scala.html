@@ -14,6 +14,10 @@ the relationships of a page
   razie.wiki.model.Wikis(realm).index.label(s).getOrElse(s)
 }
 
+@** you can only have the dom browser or the weBrowser on one page - they share the same spot *@
+
+@** they differ in the way they format the links *@
+
 <div class="row" id="wikiBrowser">
   <div class="col-sm-4 alert alert-info" title="@tleft" style="height: @height(); overflow-y: auto; vertical-align: middle; text-align: right;">
           @left.distinct.map { assoc =>
