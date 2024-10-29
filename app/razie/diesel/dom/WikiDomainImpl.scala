@@ -42,21 +42,26 @@ class WikiDomainImpl (val realm:String, val wi:WikiInst) extends WikiDomain {
   @volatile var isLoading: Boolean = false
 
   override def rdom: RDomain = {
-    if (irdom == null) wi.index.synchronized {
-      if (irdom == null) {
+    if (irdom == null && !isLoading) wi.index.synchronized {
+      if (irdom == null && !isLoading) {
         isLoading = true
 
         loadDomain()
 
         isLoading = false
+        // todo when done loading, should invalidate WeCache
       }
     }
-    irdom
+
+    if(irdom != null) irdom else RDomain.empty
+    // todo not kosher to ignore stuff while loading... should load all upfront - what to do about circular depys
   }
 
   /** make sure to call this from a synchronized block */
   private def loadDomain(): Unit = {
       // add wiki mixins first, then domain mixins, so they can be overriden in leaf
+    clog << "------------ Loading RDomain " + realm
+
       val realms = (Wikis(realm).mixins.l.map(_.realm) :::
           WikiReactors
               .getProperties(realm)

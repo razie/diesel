@@ -8,7 +8,7 @@ package razie.diesel.dom
 import razie.diesel.dom.RDOM._
 import razie.diesel.engine.nodes.EVal
 import razie.tconf.DSpec
-import scala.collection.mutable.ListBuffer
+import scala.collection.mutable.{HashMap, ListBuffer}
 
 /** a domain or sub-domain specification. Think UML.
   *
@@ -58,17 +58,34 @@ class RDomain(
     x
   }
 
-  /** COPY and clean the model - generate new assocs from members etc */
+  /** COPY and clean the model - generate new assocs from members, expand class extensions etc */
   def revise = {
+    // derive assocs first so we don't point to ever derive class, just the base
     val newAssocs = classes.values.toList.flatMap{c=>
       c.parms.filter(p=> nz(p.ttype) &&
         !RDomain.isDataType(p.ttype.getClassName) &&
         !assocs.exists(a=> a.a == c.name && a.z == p.ttype.getClassName && a.zRole==p.name)).map{p=>
-          A("", c.name, p.ttype.getClassName, (if (!p.ttype.isRef) "Parent" else ""), p.name)
-        }
+        A("", c.name, p.ttype.getClassName, (if (!p.ttype.isRef) "Parent" else ""), p.name)
+      }
     }
 
-    val x=new RDomain(name, classes, assocs ++ newAssocs, diamonds, objects, funcs)
+    // expand base params into the class
+    val newClasses = classes.values.toList.map {c=>
+      if(c.base.size <= 0) c
+      else {
+        val basep = c.base.foldLeft(List.empty[P])((a,b)=>classes(b).parms.filter(p=> !a.exists(p.name != _.name ))).distinct
+        val newc = c.copy (
+          parms = c.parms ::: basep.filter(p=> !c.parms.exists(p.name != _.name ))
+        )
+        newc.pos = c.pos
+        newc
+      }
+    }
+
+    val mnewClasses = new HashMap[String, C]()
+    newClasses.foreach(c=>mnewClasses.put(c.name, c))
+
+    val x=new RDomain(name, mnewClasses.toMap, assocs ++ newAssocs, diamonds, objects, funcs)
     x.moreElements.appendAll(moreElements)
     x.specs.appendAll(specs)
     x
