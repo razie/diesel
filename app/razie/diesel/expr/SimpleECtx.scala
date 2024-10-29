@@ -195,7 +195,7 @@ class SimpleECtx(
   /** see if we can source a value from the domain, i.e. static $val */
   protected def getpFromDomain(name: String): Option[P] = {
     domain.flatMap(_.moreElements.collectFirst {
-      case v: EVal if v.p.name == name => v.p.copyFrom(v.p) // do NOT allow modifying of domain values.
+      case v: EVal if v.p.name == name => v.p.copyValueFrom(v.p) // do NOT allow modifying of domain values.
       // So the copy can get recalculated without impacting the original
     })
   }

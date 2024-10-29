@@ -158,6 +158,7 @@ case class BCMP2(a: Expr, op: String, b: Expr)
                 ctx.get(b.asInstanceOf[AExprIdent].start).isEmpty) /* not a known value */ {
               val bs = b.asInstanceOf[AExprIdent].expr
 
+              // WTypes can check static primitive types - the domain will check classes
               WTypes.isSubtypeOf(a.getType, bs) ||
                   WTypes.isSubtypeOf(ap.calculatedTypedValue.contentType, bs) ||
                   WTypes.isSubtypeOf(as, bp.calculatedValue) ||
@@ -344,7 +345,7 @@ case class BCMP2(a: Expr, op: String, b: Expr)
             case "notIn" if bp.ttype == WTypes.wt.ARRAY => !isin(ap, bp)
             case "not in" if bp.ttype == WTypes.wt.ARRAY => !isin(ap, bp)
 
-            case "is" => checkIS
+            case "is" | "ofType" => checkIS
             case "xNot" => !checkIS
 
             case "not" => a(in).toString.length > 0 && a(in) != b(in)

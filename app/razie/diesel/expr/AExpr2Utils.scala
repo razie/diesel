@@ -119,7 +119,7 @@ object AExpr2Utils {
   }
 
   // ordinary map between two expressions
-  def map (a:Expr, av:P, b:Expr, v:Any, expr:String)(implicit ctx: ECtx) = {
+  def map (a:Expr, av:P, b:Expr, v:Any, expr:String, collectResp:Boolean = true)(implicit ctx: ECtx) = {
     av.calculatedTypedValue.cType.name match {
 
       case WTypes.ARRAY => {
@@ -127,15 +127,23 @@ object AExpr2Utils {
 
         val arr = av.calculatedTypedValue.asArray
 
-        val resArr = arr.map { x =>
-          mapOne (b, x, elementType)
+        if(collectResp) {
+          val resArr = arr.map { x =>
+            mapOne(b, x, elementType)
+          }
+
+          //val le = resArr.map(_.calculatedTypedValue)
+          val le = resArr
+          val finalArr = le.map(_.value)
+
+          PValue(finalArr, P.inferArrayTypeFromPV(le))
+        } else {
+          arr.foreach { x =>
+            mapOne(b, x, elementType)
+          }
+
+          PValue("", WTypes.wt.UNDEFINED)
         }
-
-        //val le = resArr.map(_.calculatedTypedValue)
-        val le = resArr
-        val finalArr = le.map(_.value)
-
-        PValue(finalArr, P.inferArrayTypeFromPV(le))
       }
 
       case WTypes.RANGE => {
@@ -163,7 +171,12 @@ object AExpr2Utils {
         val le = resArr.map(_.calculatedTypedValue)
         val finalArr = le.map(_.value)
 
-        PValue(finalArr, P.inferArrayTypeFromPV(le))
+        // todo optimize, don't collect above
+        if(collectResp) {
+          PValue(finalArr, P.inferArrayTypeFromPV(le))
+        } else {
+          PValue("", WTypes.wt.UNDEFINED)
+        }
       }
 
       case WTypes.JSON => {
@@ -195,7 +208,12 @@ object AExpr2Utils {
         val le = resArr.map(_.calculatedTypedValue)
         val finalArr = le.map(_.value)
 
-        PValue(finalArr, P.inferArrayTypeFromPV(le))
+        // todo optimize, don't collect above
+        if(collectResp) {
+          PValue(finalArr, P.inferArrayTypeFromPV(le))
+        } else {
+          PValue("", WTypes.wt.UNDEFINED)
+        }
       }
 
       case _ if av.ttype.isStream => {
@@ -203,7 +221,7 @@ object AExpr2Utils {
         streamOp (op="map", v, av, b, av, av, expr)
       }
 
-      case WTypes.UNDEFINED if ctx.nonStrict => P.undefined(Diesel.PAYLOAD).value.getOrElse(null)
+      case WTypes.UNDEFINED if ctx.nonStrict => P.undefined(Diesel.PAYLOAD).value.orNull
 
       case _ => throw new DieselExprException("Can't do map on: " + av)
     }

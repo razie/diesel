@@ -83,6 +83,12 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
       // is it built-in or generic?
     expr match {
 
+      case "nicej" => P.fromTypedValue("",
+        firstParm.getOrElse {
+          throw new DieselExprException("Need one argument.")
+        }.calculatedP.currentNiceStringValue,
+        WTypes.wt.STRING)
+
       case "uuid" => {
         // todo singleton
         val x = new ObjectId().toString

@@ -30,6 +30,8 @@ object WTypes {
     final val DATE=WType("Date")
     final val REGEX=WType("Regex")
 
+    final val PASSWORD=WType("Password")
+
     final val INT=WType("Int")
     final val FLOAT=WType("Float")
     final val BOOLEAN=WType("Boolean")
@@ -77,6 +79,8 @@ object WTypes {
   final val INT = "Int"
   final val FLOAT = "Float"
   final val BOOLEAN = "Boolean"
+
+  final val PASSWORD = "Password"
 
   final val REF = "Ref"
 
@@ -152,7 +156,7 @@ object WTypes {
 
   val PRIMARY_TYPES = Array(
     NUMBER , STRING , DATE , REGEX , INT , FLOAT , BOOLEAN , REF , RANGE, ARRAY, HTML, XML, JSON,
-    SOURCE, BYTES, EXCEPTION, DOMAIN, ERROR, MSG, FUNC, CLASS, URL
+    SOURCE, BYTES, EXCEPTION, DOMAIN, ERROR, MSG, FUNC, CLASS, URL, PASSWORD
   )
 
   /** get corresponding mime content-type */

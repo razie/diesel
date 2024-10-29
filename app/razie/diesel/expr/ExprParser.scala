@@ -30,7 +30,7 @@ trait ExprParser extends RegexParsers {
     case s => s
   }
 
-  def optComment: Parser[String] = opt(whiteSpace ~> pComment) ^^ {
+  def optComment: Parser[String] = opt(ows ~> pComment) ^^ {
     case s => s.mkString
   }
 
@@ -49,10 +49,15 @@ trait ExprParser extends RegexParsers {
   private def opsAS: Parser[String] = "as"
 
   private def opsMAP: Parser[String] = "map" <~ ws |
-      "fold" <~ ws | "foreach" <~ ws |
-      "flatMap" <~ ws | "indexBy" <~ ws |
-      "flatten" <~ ws | "filter" <~ ws |
-      "exists" <~ ws | "mkString" <~ ws |
+      "fold" <~ ws |
+      "foreach" <~ ws |
+      "flatMap" <~ ws |
+      "indexBy" <~ ws |
+      "flatten" <~ ws |
+      "filter" <~ ws |
+      "exists" <~ ws |
+      "mkString" <~ ws |
+      "catPath" <~ ws |
       "|c" <~ ws | "|>" <~ ws | "|" <~ ws |
   // streams:
       ">>>" <~ ws | ">>" <~ ws | "<<<" <~ ws | "<<" <~ ws
@@ -190,12 +195,12 @@ trait ExprParser extends RegexParsers {
     case i ~ l => i :: l
   }
 
-  def xpath: Parser[String] = (ident | "*" | "**") ~ rep("/".r ~ xpathElem) ^^ {
+  def xpath: Parser[String] = ("*" | "**" | xpathElem) ~ rep("/".r ~ xpathElem) ^^ {
     case i ~ l => (i :: l.map { x => x._1 + x._2}).mkString("")
   }
 
-  // /{attr}@gigi:$name/
-  def xpathElem: Parser[String] = """(\{.*\})*([@])*([\w]+\:)*([\$|\w\. -]+|\**)(\[.*\])*""".r ^^ {
+  // /{attr}@gigi:$name[cond]/
+  def xpathElem: Parser[String] = """(\{.*\})*([@])*([\w]+\:)*([\$|\w\.-]+|\**)(\[.*\])*""".r ^^ {
     case e => e.toString
   }
 
@@ -449,7 +454,8 @@ private def accessorIdent: Parser[RDOM.P] = "." ~> ident ^^ { case id => P("", i
   /**
     * optional attributes
     */
-  def attrs: Parser[List[RDOM.P]] = " *\\(".r ~> ows ~> repsep(pattr, "\\s*,\\s*".r ~ optComment) <~ ows <~ ")"
+  def attrs: Parser[List[RDOM.P]] =
+    " *\\(".r ~> ows ~> repsep(pattr, "\\s*,\\s*".r ~ optComment) <~ opt(ows ~ ",") <~ ows <~ ")"
 
 
   //

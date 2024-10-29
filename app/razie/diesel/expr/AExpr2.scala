@@ -538,8 +538,26 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
         AExpr2Utils.pipeOp (op, v, av, b, expr)
       }
 
+      // same as map but it doesn't affect payload
+      case "foreach" => {
+        AExpr2Utils.map (a, av, b, v, expr, collectResp = false)
+      }
+
       case "map" => {
-        AExpr2Utils.map (a, av, b, v, expr)
+        AExpr2Utils.map (a, av, b, v, expr, collectResp = true)
+      }
+
+
+      // concatenate paths - make sure there is just one /
+      case "catPath" => {
+
+        val as = av.calculatedTypedValue.asString
+        val bs = b.applyTyped("").currentStringValue
+
+        val ass = if(as.trim.endsWith("/")) as.trim else as.trim + "/"
+        val bss = if(bs.trim.startsWith("/")) bs.trim.substring(1) else bs
+
+        PValue(ass + bss, WTypes.wt.STRING)
       }
 
       case "mkString" => {
@@ -652,31 +670,6 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
 
           case WTypes.UNDEFINED if ctx.nonStrict => P.undefined(Diesel.PAYLOAD).value.orNull
           case _ => throw new DieselExprException("Can't do flatMap on: " + av)
-        }
-      }
-
-      // same as map but it doesn't affect payload
-      case "foreach" => {
-        av.calculatedTypedValue.cType.name match {
-          case WTypes.ARRAY => {
-            val arr = av.calculatedTypedValue.asArray
-
-            arr.foreach {x=>
-              if(b.isInstanceOf[LambdaFuncExpr] || b.isInstanceOf[BlockExpr] && b.asInstanceOf[BlockExpr].ex.isInstanceOf[LambdaFuncExpr]) {
-                // common case, no need to go through context, Block passes through to Lambda
-                val resp = b.applyTyped(x).calculatedTypedValue
-              } else {
-                // we populate an "x" or should it be "elem" ?
-                val sctx = new StaticECtx(List(P.fromTypedValue("x", x)), Some(ctx))
-                val resp = b.applyTyped(x)(sctx).calculatedTypedValue
-              }
-            }
-
-            PValue("", WTypes.wt.UNDEFINED)
-          }
-
-          case WTypes.UNDEFINED if ctx.nonStrict => P.undefined(Diesel.PAYLOAD).value.orNull
-          case _ => throw new DieselExprException("Can't do foreach on: " + av)
         }
       }
 
