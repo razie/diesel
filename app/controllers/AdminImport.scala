@@ -177,18 +177,23 @@ class AdminImport extends AdminBase with Logging {
   /** is this a remote user - email and password match something on remote? */
   private[controllers] def isRemoteUser(email: String, pwd: String) = {
 
-    val source = "http://www.dieselapps.com"
+    val source = "https://www.dieselapps.com"
 
     // temporary key used to encrypt/decrypt transfer
     val key = System.currentTimeMillis().toString + "87654321"
 
     // first get the user and profile and create them locally
-    Try {
-      clog << s"ADMIN_isRemoteUser $source $email"
+    var res = false
+    try {
+      clog << s"ADMIN_isRemoteUser query: $source $email"
       val u = body(url(s"$source/dmin-isu/$key", method = "GET").basic("H-" + email, "H-" + pwd))
-      clog << s"  Response: $u"
-      u.contains("yes")
-    }.getOrElse(false)
+      clog << s"ADMIN_isRemoteUser Response: $u"
+      res = u.contains("yes")
+    } catch {
+      case t:Throwable => log("isRemoteUser failed with ", t)
+    }
+
+    res
   }
 
   /** import a remote user if the email and password match */
@@ -196,13 +201,13 @@ class AdminImport extends AdminBase with Logging {
 
     clog << "ADMIN_importRemoteUser"
 
-    val source = "www.dieselapps.com"
+    val source = "https://www.dieselapps.com"
 
     // key used to encrypt/decrypt transfer
     val key = System.currentTimeMillis().toString + "87654321"
 
     // first get the user and profile and create them locally
-    val u = body(url(s"http://$source/dmin-getu/$key", method = "GET").basic("H-" + email, "H-" + pwd))
+    val u = body(url(s"$source/dmin-getu/$key", method = "GET").basic("H-" + email, "H-" + pwd))
     val dbo = com.mongodb.util.JSON.parse(u).asInstanceOf[DBObject];
     val pu = grater[PU].asObject(dbo)
     val iau = pu.u
