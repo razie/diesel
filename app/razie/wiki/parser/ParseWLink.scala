@@ -20,13 +20,11 @@ object ParseWLink {
   val LIST = """list:?([^.]*\.)?([^]]*)""".r
   val ALIAS = """alias:([^\]]*)""".r
   val NORMAL = """(rk:)?([^|\]]*)([ ]*[|][ ]*)?([^]]*)?""".r       // [[rk.Topic:name]]
-  val BROWSE = """browse:([^|\]]*)([ ]*[|][ ]*)?([^]]*)?""".r      // [[browse:rk.Topic:name]]
+  val BROWSE = """browse:([^|\]]*)([ ]*[|][ ]*)?([^]]*)?""".r      // [[browse:rk.Topic:name | label]]
   val ROLE = """([^:]*::)?([^|\]]*)([ ]*[|][ ]*)?([^]]*)?""".r     // [[enabler::rk.Topic:name]]
-  val DOM = """dom:([^|\]]*)([ ]*[|][ ]*)?([^]]*)?""".r            // [[dom:rk.Topic:name]]
+  val DOM = """dom:([^|\]]*)([ ]*[|][ ]*)?([^]]*)?""".r            // [[dom:rk.Topic:name | label]]
 
   def apply(realm:String, repf: (String => String), input: String): Option[(String, Option[ILink])] = {
-    var i: Option[ILink] = None
-
     input match {
 
       case SEARCH(nm) =>
@@ -109,7 +107,7 @@ object ParseWLink {
           rk != null && rk.length > 0))
       }
 
-      case _ => Some(ERR, i)
+      case _ => Some(ERR, None)
     }
   }
 

@@ -287,7 +287,7 @@ class DomEngineV1 (
         // $val defined in scope in story, not in spec.
         val p = n.p.calculatedP // only calculate if not already calculated =likely in a different context=
 
-        appendVals(a, n.pos, None, List(p), a.getCtx.get, AstKinds.TRACE)
+        appendVals(a, n.pos, None, List(p), a.getCtx.get, AstKinds.DEBUG)
       }
 
       case e: ExpectM => if (!settings.simMode) expandExpectM(a, e)
@@ -987,6 +987,11 @@ class DomEngineV1 (
 
         true
 
+      } else if (ea == DieselMsg.ENGINE.DIESEL_HEADING) {
+        log("diesel.heading : " + ctx.get("desc").mkString)
+
+        true
+
       } else if (ea == DieselMsg.ENGINE.DIESEL_STEP) {
         log("diesel.step : " + ctx.get("desc").mkString)
 
@@ -1019,7 +1024,7 @@ class DomEngineV1 (
 //        a.childrenCol.foreach(_.kind = AstKinds.GENERATED)
 //        a.childrenCol.head.childrenCol.foreach(_.kind = AstKinds.GENERATED)
 
-        a.childrenCol.head.parent = None
+        a.childrenCol.foreach(_.parent = None)
         newNodes.appendAll(a.childrenCol)
         a.childrenCol.clear() //
 
@@ -1099,7 +1104,10 @@ class DomEngineV1 (
 
         true
 
-      } else if (ea == DieselMsg.ENGINE.DIESEL_RETURN || ea == DieselMsg.ENGINE.DIESEL_FLOW_RETURN || ea == DieselMsg.ENGINE.DIESEL_STORY_RETURN) { //========================
+      } else if (
+        ea == DieselMsg.ENGINE.DIESEL_RETURN ||
+        ea == DieselMsg.ENGINE.DIESEL_FLOW_RETURN ||
+        ea == DieselMsg.ENGINE.DIESEL_STORY_RETURN) { //========================
 
         // set all attributes in the root context
         in.attrs.map(_.calculatedP).foreach { p =>
@@ -1485,7 +1493,7 @@ class DomEngineV1 (
 
             List(
               DomAst(EWarning("Assert failed: " + m)),
-              DomAst(new EMsg("diesel", "return",
+              DomAst(new EMsg("diesel.story", "return",
                 resp :: code :: cp.filter(!_.isOfType(WTypes.wt.BOOLEAN))
               ),
                 AstKinds.GENERATED))
@@ -1493,7 +1501,7 @@ class DomEngineV1 (
         newD.foreach(addChild(a, _))
         true
 
-      } else if (ea == DieselMsg.ENGINE.DIESEL_MSG) { //========================
+      } else if (ea == DieselMsg.ENGINE.DIESEL_MSG || ea == DieselMsg.ENGINE.DIESEL_CALL) { //========================
 
         val EMsg.REGEX(e, m) = ctx.getRequired("msg")
         val nat = in.attrs.filter(e => e.name != "msg")

@@ -261,6 +261,9 @@ object DieselMsg {
     final val DIESEL_THROW = "diesel.throw"
     final val DIESEL_CATCH = "diesel.catch"
 
+    final val DIESEL_CALL = "diesel.call"
+    final val DIESEL_MSG = "diesel.msg"
+
     final val DIESEL_REALM_READY = "diesel.realm.ready"
 
     final val DIESEL_PING = "diesel.ping"
@@ -270,7 +273,6 @@ object DieselMsg {
     final val DIESEL_SUMMARY = "diesel.summary"
     final val DIESEL_DEBUG = "diesel.debug"
     final val DIESEL_LATER = "diesel.later"
-    final val DIESEL_MSG = "diesel.msg"
     final val DIESEL_WHILE = "diesel.while"
     final val DIESEL_ASSERT = "diesel.assert"
     final val DIESEL_MAP = "diesel.map"
@@ -280,6 +282,7 @@ object DieselMsg {
     final val DIESEL_SYNC = "diesel.engine.sync"
     final val DIESEL_ASYNC = "diesel.engine.async"
     final val DIESEL_PONG = "diesel.engine.pong"
+    final val DIESEL_HEADING = "diesel.heading"
     final val DIESEL_STEP = "diesel.step"
     final val DIESEL_TODO = "diesel.todo"
     final val DIESEL_NOP = "diesel.nop"

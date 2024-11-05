@@ -37,7 +37,7 @@ trait DomParser extends ParserBase with ExprParser {
 
   def domainBlocks =
     aCommentLine | panno | pobject | pclass | passoc | pdef |
-        pwhenTree | pwhen | pflow | pmatch | psend | pmsg | pval | pexpect | passert
+        pwhenTree | pwhen | pflow | pmatch | psend | pmsg | pval | pexpect | passert | pheading
 
   // todo this disables the caching for all specs !!! superbad as they get compiled over and over
   /** non cacheable */
@@ -115,7 +115,7 @@ trait DomParser extends ParserBase with ExprParser {
           ctx.we.get.collector.remove(RDomain.DOM_ANNO_LIST)
 
           var c = C(name, "", stereo.map(_.mkString).mkString,
-            ext.toList.flatMap(identity),
+            ext.toList.flatten,
             tParm.map(_.mkString).mkString,
             attrs,
             funcs,
@@ -906,6 +906,19 @@ trait DomParser extends ParserBase with ExprParser {
         val f = ExpectAssert(not.isDefined, exprs).withPos(pos)
         collectDom(f, ctx.we)
         StrAstNode(f.toHtml + "<br>")
+      }
+    }
+  }
+
+  /**
+    * .assert (a,b)
+    */
+  def pheading: PS = keyw("##+.*".r) ^^ {
+    case k => {
+      lazystatic(k) { (current, ctx) =>
+        val f = EInfo(k.s)
+        collectDom(f, ctx.we)
+        StrAstNode(k.s)
       }
     }
   }

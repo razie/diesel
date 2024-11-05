@@ -80,10 +80,10 @@ view an engine
 
         showDurations();
 
-        setInterval(function(){
+        var t = setInterval(function(){
           if(refreshMode && !done && $('#refreshMode').prop('checked'))  window.location.reload();
         }, 5000);
-
+        console.log ("refreshInterval set: " + t);
       });
 
       postThis = function (url, next) {

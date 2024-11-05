@@ -221,7 +221,12 @@ case class EMsg(
       case _ => "default"
     }
 
-    if (DieselMsg.ENGINE.DIESEL_STEP == ea) {
+    if (DieselMsg.ENGINE.DIESEL_HEADING == ea) {
+      val pad=80
+      val p2 = (pad - m.length)/2
+      val mm = if (p2 <= 0) m else "".view.padTo(p2, "&nbsp;").mkString + m + "".view.padTo(p2, "&nbsp;").mkString
+      span("<br>"+mm+"<br>", "primary", "", "style=\"color:yellow;font-size:1em\"")
+    } else if (DieselMsg.ENGINE.DIESEL_STEP == ea) {
       // step is just one comment
       /*span(arch+"::")+*/ first(pos, kind) + eaHtml(kind, "primary") + " " + span(m, "primary")
     } else if (DieselMsg.ENGINE.DO_THIS == ea || DieselMsg.ENGINE.DO_THAT == ea) {

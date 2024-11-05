@@ -539,10 +539,14 @@ object EnginePrep extends Logging {
           // todo withGuard is connected in pexpect - is it really needed again?/
           lastAst = List(DomAst(
             e
-                .withGuard(lastMsg.map(_.asMatch))
-                .withTarget(lastMsgAst), AstKinds.TEST).withPrereq(lastAst.map(_.id)
+              .withGuard(lastMsg.map(_.asMatch))
+              .withTarget(lastMsgAst), AstKinds.TEST).withPrereq(lastAst.map(_.id)
           ))
           lastAst
+        }
+
+        case e: EInfo if (e.msg.startsWith("##")) => {
+          addMsg(EMsg("diesel", "heading", List(P("msg", e.msg))))
         }
 
         // these don't wait - they don't run, they are collected together

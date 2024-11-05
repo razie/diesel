@@ -74,7 +74,9 @@ require(['jquery', 'weCommons'], function($) {
       data: JSON.stringify(data),
       contentType: 'application/json',
       success: function (data) {
-        window.location.href = '/diesel/dom/list/@cat';
+        console.log ("doUpsert RESPONSE:"+JSON.stringify(data));
+        var o = data;
+        window.location.href = '/diesel/dom/browse/'+o.assetRef.class + "/" + o.assetRef.key;
       },
       error: function (data) {
         alert(typeof data == "object" ? JSON.parse(data):data);
