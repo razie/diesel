@@ -48,7 +48,7 @@ class RazRequest (irealm:String, iau:Option[User], val ireq:Request[_], operatio
   def flash = ireq.flash
 
   def id : scala.Long = ireq.id
-  def tags : scala.Predef.Map[scala.Predef.String, scala.Predef.String] = ireq.tags
+  //def tags : scala.Predef.Map[scala.Predef.String, scala.Predef.String] = ireq.tags
   def headers : play.api.mvc.Headers = ireq.headers
   def queryString : scala.Predef.Map[scala.Predef.String, scala.Seq[scala.Predef.String]] = ireq.queryString
   def path : scala.Predef.String = ireq.path

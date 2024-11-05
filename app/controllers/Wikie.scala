@@ -36,7 +36,6 @@ import controllers.WikiUtil.{EditWiki, ReportWiki, after, applyStagedLinks, befo
 import play.api.Configuration
 import mod.wiki.EditLock
 
-
 /** wiki edits controller */
 @Singleton
 class Wikie @Inject()(config: Configuration, realmCtl:Realm) extends WikieBase {
@@ -47,9 +46,11 @@ class Wikie @Inject()(config: Configuration, realmCtl:Realm) extends WikieBase {
       implicit request =>
         (for (
           cat <- request.queryString.get("cat").flatMap(_.headOption);
-          name <- request.queryString.get("name").flatMap(_.headOption)
+          name <- request.queryString.get("name").flatMap(_.headOption);
+          irealm <- request.queryString.get("realm").flatMap(_.headOption)
         ) yield {
-          wikieEdit(WID(cat, name)).apply(request).value.get.get
+//          wikieEdit(WID(cat, name)).apply(request).value.get.get
+          wikieEdit(WID(cat, name, None, None, Some(irealm))).apply(request).value.get.get
         }) getOrElse {
           error("ERR_HACK Wiki.email2")
           Unauthorized("Oops - cannot create this link... " + errCollector.mkString)
@@ -673,7 +674,9 @@ class Wikie @Inject()(config: Configuration, realmCtl:Realm) extends WikieBase {
           else co
         } else co
 
-        if(newContent.length == 0) newContent = "no description"
+        if(newContent.length == 0) {
+          newContent = "no description"
+        }
 
         newContent = newContent.replaceAll("\r", "")
 
@@ -957,14 +960,14 @@ class Wikie @Inject()(config: Configuration, realmCtl:Realm) extends WikieBase {
     }
   }
 
-  /** POSTed from category, has name -> create topic in edit mode */
+  /** POSTed from category or start newly created, has name -> create topic in edit mode */
   def wikieAddWithName(cat: String, tags:String) = FAU {
     implicit au => implicit errCollector => implicit request =>
     val realm = CAT.unapply(cat).flatMap(_.realm).getOrElse(getRealm())
     val cls = CAT.unapply(cat).map(_.cat).mkString
     val dom = WikiDomain(realm)
 
-        addForm.bindFromRequest.fold( formWithErrors =>
+    addForm.bindFromRequest.fold( formWithErrors =>
           if(!dom.isWikiCategory(cls)) {
             Redirect(s"/doe/diesel/dom/startCreate/$cls")
           } else {
@@ -984,23 +987,23 @@ class Wikie @Inject()(config: Configuration, realmCtl:Realm) extends WikieBase {
             views.html.wiki.wikieCreate(cat, tags, "Category name cannot contain '.' !")
           }
         } else {
-          WikiDomain(realm).zEnds(cat, "Template").headOption.map { t =>
+          dom.zEnds(cat, "Template").headOption.map { t =>
             ROK.s apply { implicit stok =>
               (views.html.wiki.wikieAddWithSpec(cat, name, "Template", t, realm))
             }
           } orElse
-              WikiDomain(realm).zEnds(cat, "StaticTemplate").headOption.map { t =>
+              dom.zEnds(cat, "StaticTemplate").headOption.map { t =>
                 Redirect(routes.Wikie.addWithSpec2(cat, name, t, "Template", realm))
               } orElse
               Wikis(realm).category(cat).filter(_.sections.find(_.name == "form").isDefined).map { we =>
                 Redirect(routes.Wikie.addWithSpec2(cat, name, we.wid.wpath, "Template", realm))
               } orElse
-              WikiDomain(realm).rdom.assocsWhereTheyHaveRole(cat, "Spec").headOption.map { t =>
+              dom.rdom.assocsWhereTheyHaveRole(cat, "Spec").headOption.map { t =>
                 ROK.s apply { implicit stok =>
                   (views.html.wiki.wikieAddWithSpec(cat, name, "Spec", t, realm))
                 }
               } getOrElse
-              Redirect(routes.Wikie.wikieEditNew(WID(cat, name).r(realm), "", tags))
+              Redirect(routes.Wikie.wikieEditOld(WID(cat, name).r(realm), "", tags))
         }
       }
     })
@@ -1085,7 +1088,7 @@ class Wikie @Inject()(config: Configuration, realmCtl:Realm) extends WikieBase {
             views.html.wiki.wikieAddWithSpec(cat, name, "Spec", t, request.realm)
           }
         } getOrElse
-          Redirect(routes.Wikie.wikieEditNew(WID(cat, name, pwid.findId).r(pwid.getRealm), ""))
+          Redirect(routes.Wikie.wikieEditOld(WID(cat, name, pwid.findId).r(pwid.getRealm), ""))
       }
     })
   }
