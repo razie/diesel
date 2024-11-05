@@ -75,7 +75,7 @@ class RDomain(
       else {
         val basep = c.base.foldLeft(List.empty[P])((a,b)=>classes(b).parms.filter(p=> !a.exists(p.name != _.name ))).distinct
         val newc = c.copy (
-          parms = c.parms ::: basep.filter(p=> !c.parms.exists(p.name != _.name ))
+          parms = c.parms ::: basep.filter(p=> !c.parms.exists(p.name == _.name ))
         )
         newc.pos = c.pos
         newc

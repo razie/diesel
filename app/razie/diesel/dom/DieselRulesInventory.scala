@@ -126,6 +126,25 @@ class DieselRulesInventory (
     )
   }
 
+  /**
+    * remove by entity/ref
+    */
+  override def remove(dom: RDomain, ref: FullSpecRef)
+  : Either[Option[DieselAsset[_]], EMsg] = {
+    Right(
+      new EMsg(
+        "diesel.inv.impl",
+        "remove",
+        List(
+          P.of("inventory", this.name),
+          P.of("connection", this.conn),
+          P.of("className", ref.cls),
+          P.of("table", classOname(ref.cls)),
+          P.of("ref", ref.toJson)
+        ))
+    )
+  }
+
   /** list all elements of class */
   override def listAll(dom: RDomain, ref: FullSpecRef,
                        from: Long, limit: Long, sort: Array[String],
@@ -149,14 +168,62 @@ class DieselRulesInventory (
   }
 
   /**
-    * remove by entity/ref
+    * find by field value
+    *
+    * if the field and id is null, then no filter
     */
-  override def remove(dom: RDomain, ref: FullSpecRef)
-  : Either[Option[DieselAsset[_]], EMsg] = {
+  override def findByQuery(dom: RDomain, ref: FullSpecRef, epath: Either[String, collection.Map[String, Any]],
+                           from: Long = 0, size: Long = 100,
+                           sort: Array[String],
+                           countOnly: Boolean = false,
+                           collectRefs: Option[mutable.HashMap[String, String]] = None):
+  Either[DIQueryResult, EMsg] = {
+
+    val attrs = epath.fold(
+      s => {
+        // todo what ???
+        // query by path
+        val PAT = DomInventories.CLS_FIELD_VALUE
+        val PAT(cls, field, id) = epath.left.get
+
+        {
+          if (id == "" || id == "*" || id == "'*'")
+            P.fromSmartTypedValue("query", Map())
+          else
+            P.fromSmartTypedValue("query", Map(field -> id))
+        }
+      },
+      m => P.fromSmartTypedValue("query", m)
+    )
+
     Right(
       new EMsg(
         "diesel.inv.impl",
-        "remove",
+        "findByQuery",
+        List(
+          P.of("inventory", this.name),
+          P.of("connection", this.conn),
+          P.of("className", ref.cls),
+          P.of("table", classOname(ref.cls)),
+          P.of("from", from),
+          P.of("size", size),
+          P.of("countOnly", countOnly),
+          P.of("sort", sort.mkString(",")),
+          attrs
+        ))
+    )
+  }
+
+  /**
+    * find by entity/ref
+    */
+  override def findByRef(dom: RDomain, ref: FullSpecRef, collectRefs: Option[mutable.HashMap[String, String]] = None)
+  : Either[Option[DieselAsset[_]], EMsg] = {
+
+    Right(
+      new EMsg(
+        "diesel.inv.impl",
+        "findByRef",
         List(
           P.of("inventory", this.name),
           P.of("connection", this.conn),
@@ -277,72 +344,6 @@ class DieselRulesInventory (
           )
         )
     Nil
-  }
-
-  /**
-    * find by field value
-    *
-    * if the field and id is null, then no filter
-    */
-  override def findByQuery(dom: RDomain, ref: FullSpecRef, epath: Either[String, collection.Map[String, Any]],
-                           from: Long = 0, size: Long = 100,
-                           sort: Array[String],
-                           countOnly: Boolean = false,
-                           collectRefs: Option[mutable.HashMap[String, String]] = None):
-  Either[DIQueryResult, EMsg] = {
-
-    val attrs = epath.fold(
-      s => {
-        // query by path
-        val PAT = DomInventories.CLS_FIELD_VALUE
-        val PAT(cls, field, id) = epath.left.get
-
-        {
-          if (id == "" || id == "*" || id == "'*'")
-            P.fromSmartTypedValue("query", Map())
-          else
-            P.fromSmartTypedValue("query", Map(field -> id))
-        }
-      },
-      m => P.fromSmartTypedValue("query", m)
-    )
-
-    Right(
-      new EMsg(
-        "diesel.inv.impl",
-        "findByQuery",
-        List(
-          P.of("inventory", this.name),
-          P.of("connection", this.conn),
-          P.of("className", ref.cls),
-          P.of("table", classOname(ref.cls)),
-          P.of("from", from),
-          P.of("size", size),
-          P.of("countOnly", countOnly),
-          P.of("sort", sort.mkString(",")),
-          attrs
-        ))
-    )
-  }
-
-  /**
-    * find by entity/ref
-    */
-  override def findByRef(dom: RDomain, ref: FullSpecRef, collectRefs: Option[mutable.HashMap[String, String]] = None)
-  : Either[Option[DieselAsset[_]], EMsg] = {
-
-    Right(
-      new EMsg(
-        "diesel.inv.impl",
-        "findByRef",
-        List(
-          P.of("inventory", this.name),
-          P.of("connection", this.conn),
-          P.of("className", ref.cls),
-          P.of("table", classOname(ref.cls)),
-          P.of("ref", ref.toJson)
-        ))
-    )
   }
 
 }

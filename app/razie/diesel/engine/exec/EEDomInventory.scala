@@ -28,8 +28,10 @@ class EEDomInventory extends EExecutor("diesel.inv") {
   final val UPSERT_BULK = "diesel.inv.upsert.bulk"
   final val LISTALL     = "diesel.inv.listAll"
   final val FIND        = "diesel.inv.find"
+  final val FINDBYREF   = "diesel.inv.findByRef"
   final val REMOVE      = "diesel.inv.remove"
   final val QUERY       = "diesel.inv.query"
+  final val FINDBYQUERY = "diesel.inv.findByQuery"
 
   final val SEEREG      = "diesel.inv.inspect"
   final val DEBUG       = "diesel.inv.debug"
@@ -64,7 +66,7 @@ class EEDomInventory extends EExecutor("diesel.inv") {
 
         //just register inv factory assocs
         val inv = ctx.getRequired("inventory")
-        val s = ctx.getRequired("classNames").split(",").map { c =>
+        val s = ctx.getRequired("classNames").split(",").map(_.trim).map { c =>
           DomInventories.registerPluginForClass(realm, c, inv)
           s"$realm - $inv - $c"
         }
@@ -222,7 +224,7 @@ class EEDomInventory extends EExecutor("diesel.inv") {
         res
       }
 
-      case FIND => { // find by key, i.e. get
+      case FIND | FINDBYREF => { // find by key, i.e. get
 
         val conn = ctx.get("connection").getOrElse("")
         val cls = ctx.getRequired("className")
@@ -261,7 +263,7 @@ class EEDomInventory extends EExecutor("diesel.inv") {
         }.getOrElse {
           // flatmap like behavior
           List(
-            (if(ctx.isStrict) EError("key missing!") else EWarning("key missing!")),
+            (if(ctx.isStrict) EError("diesel.inv.find (by ref) key missing!") else EWarning("diesel.inv.find (by ref) key missing!")),
             EVal(P.undefined(Diesel.PAYLOAD))
           )
         }
@@ -390,7 +392,7 @@ class EEDomInventory extends EExecutor("diesel.inv") {
         res
       }
 
-      case QUERY => { // query by criteria
+      case QUERY | FINDBYQUERY => { // query by criteria
 
         // todo how to sort criteria - some order is important in SQL
 

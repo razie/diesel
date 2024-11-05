@@ -67,10 +67,14 @@ class DomWikiJSONInventory (
         def mkNew =
           //todo move to RDomain
           // if (ctx.we.exists(w => WikiDomain.canCreateNew(w.specPath.realm.mkString, name)))
-            s""" <a href="/doe/diesel/dom/startCreate/${c.name}">new</a>"""
-            ""
+          s""" <a href="/doe/diesel/dom/startCreate/${c.name}">new</a>"""
 
-        s"$mkList | $mkNew"
+        def mkEdit =
+          //todo move to RDomain
+          // if (ctx.we.exists(w => WikiDomain.canCreateNew(w.specPath.realm.mkString, name)))
+            ref.map(x=> s"""| <a href="/doe/diesel/dom/startEdit/${x.category}/${x.key}">edit</a>""").getOrElse("")
+
+        s"$mkList | $mkNew $mkEdit"
       }
 
       case _ => "?"
@@ -91,7 +95,7 @@ class DomWikiJSONInventory (
     // todo use userid
     val wid = WID(ref.category, ref.key).r(ref.realm)
     val content = asset.asP.currentStringValue
-    val we = new WikiEntry(ref.category, ref.key, ref.key, "json", content, new ObjectId(), Seq("dslObject"), ref.realm)
+    var we = new WikiEntry(ref.category, ref.key, ref.key, "json", content, new ObjectId(), Seq("dslObject"), ref.realm)
 
     Wikis.find(wid).filter(wid.realm.isEmpty || _.realm == wid.realm.get) match {
 
@@ -101,6 +105,7 @@ class DomWikiJSONInventory (
 //              new Corr (
 //                s"Topic modified in between ($oldVer ${w.ver})",
 //                "Edit this last vesion and make your changes again.");
+        // keep existing tags
         var newVer = w.cloneNewVer(we.label, we.markup, we.content, we.by);
         before(newVer, WikiAudit.UPD_CONTENT)
 
@@ -110,15 +115,12 @@ class DomWikiJSONInventory (
         Wikis.clearCache(we.wid, we.wid.r(ref.realm))
 
         razie.db.tx("Wiki.Save", "anon") { implicit txn =>
-          w.update(we, Some("edited"))
+          w.update(newVer, Some("edited"))
         }
         Services ! WikiAudit(WikiAudit.UPD_EDIT, w.wid.wpathFull, None, None, Some(we), Some(w))
       }
 
       case None => {   // create a new topic
-
-//          if (we.tags.mkString(",") != tags)
-//            we = we.withTags(Tags(tags), au._id)
 
         // special properties
         we.preprocess(None)
@@ -220,7 +222,14 @@ class DomWikiJSONInventory (
       },
       m => {
         m.foreach { t =>
-          res = res.filter (_.value.parms.find(_.name == t._1).exists(_.currentStringValue == t._2.toString))
+          val v = t._2.toString
+          if(t._2.toString.length > 0)
+            res = res.filter (_.value.parms.find(_.name == t._1).exists(_.currentStringValue == v))
+          else // empty or not defined
+            res = res.filter (p=>
+              p.value.parms.find(_.name == t._1).exists(_.currentStringValue == v) ||
+              !p.value.parms.exists(_.name == t._1)
+            )
         }
         res
       }.toList

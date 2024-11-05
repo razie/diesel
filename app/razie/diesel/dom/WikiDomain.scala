@@ -5,7 +5,7 @@
   */
 package razie.diesel.dom
 
-import razie.diesel.dom.RDOM.{C, DE, T}
+import razie.diesel.dom.RDOM.{C, DE, O, T}
 import razie.hosting.WikiReactors
 import razie.tconf.TagQuery
 import razie.wiki.model._
@@ -32,8 +32,10 @@ trait WikiDomain {
     allPlugins
         .find(_.name == inventory)
         .orElse(
-          None
-          //allPlugins.find(_.isInstanceOf[DomInvWikiPlugin])
+          // big catch-all
+          if      (DieselRulesInventory.DEFAULT == inventory) Some(DieselRulesInventory.defaultInv)
+//          else if (DomWikiJSONInventory.INV == inventory) Some(DomWikiJSONInventory.instance)
+          else None
         ).toList
   }
 
@@ -57,7 +59,11 @@ trait WikiDomain {
         allPlugins
             .find(_.isInstanceOf[DomInvWikiPlugin])
             .filter(_.isRegisteredFor(realm, c.asInstanceOf[C]))
-      )
+          ).orElse(
+
+        // big catch-all
+            Some(DieselRulesInventory.defaultInv)
+          )
           .toList
     } else Nil
   }
@@ -73,8 +79,18 @@ trait WikiDomain {
   /** reload the dom from config/wikis */
   def resetDom: Unit
 
+  /** get access list */
+  def canAccess(cat: C, o:Option[O], email:Option[String], perms:Option[Set[String]]): Boolean
+
   /** is this an actual wiki category or a user-defined class or imported concept? */
   def isWikiCategory(cat: String): Boolean
+
+  /** does it know this class */
+  def containsCat (cat:String) = {
+    // this may cause lots of recursion while loading
+    if(!isLoading) rdom.classes.contains(cat)
+    else false
+  }
 
   /** parse categories into domain model */
   def createRDom: RDomain

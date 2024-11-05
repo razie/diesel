@@ -125,6 +125,32 @@ class WikiDomainImpl (val realm:String, val wi:WikiInst) extends WikiDomain {
 
   import razie.diesel.dom.RDOM._
 
+  /** can user with this dec email and perms access that object
+    *
+    * the access Group can match a permission group or an existing wiki access group
+    *
+    * @param c
+    * @param o
+    * @param email
+    * @param perms
+    * @return
+    */
+  override def canAccess(c: C, o:Option[O], email:Option[String], perms:Option[Set[String]]): Boolean = {
+    val groupName = o.flatMap(_.parms.find(_.name == "dieselAccessGroup").map(_.currentStringValue))
+      .map (_.trim)
+      .filter (_.length > 0)
+
+    groupName.map (g=>
+      if(perms.exists(_.exists(s=> s == g || s == "adminDb"))) true // group access matches user group i.e. "dbAdmin"
+      else Wikis(this.realm)
+        .find("DieselAccessGroup", g)
+        // todo don't parse every time
+//        .map (we=>P.fromTypedValue("", we.content, WTypes.wt.JSON))
+        .flatMap (we=>razie.js.parse(we.content).get("emails"))
+        .exists (_.toString.contains(email.mkString))
+    ).getOrElse(true) // either no group name or groupname not found
+  }
+
   override def isWikiCategory(cat: String): Boolean =
     rdom.classes.get(cat).exists(_.stereotypes.contains(WikiDomain.WIKI_CAT))
 

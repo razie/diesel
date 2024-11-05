@@ -43,6 +43,7 @@ case class DieselAsset[T](
     else
       asP
 
+  /** return this as a regular P */
   def asP = {
     val p = P.fromSmartTypedValue(ref.category, getValueO.get.toJson)
     p.withSchema(ref.category)

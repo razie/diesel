@@ -311,7 +311,7 @@ object RDOM {
       // like an orElse - important to preserve higher types info from expected
       def expOrElse (wt:WType) = if (expectedType == WTypes.wt.UNKNOWN) wt else {
         if(expectedType.name != wt.name)
-          throw new DieselExprException(s"Expected types don't match: $expectedType vs $wt")
+          throw new DieselExprException(s"Expected types don't match: $expectedType vs $wt for ${name}")
 
         expectedType
       }

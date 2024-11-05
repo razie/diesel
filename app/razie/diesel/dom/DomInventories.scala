@@ -5,7 +5,9 @@
   */
 package razie.diesel.dom
 
+import java.util.HashMap
 import org.json.JSONObject
+import razie.diesel.dom.RDOM.P.isArrayType
 import razie.diesel.{Diesel, dom}
 import razie.diesel.dom.RDOM._
 import razie.diesel.engine.{DomEngECtx, DomEngineSettings}
@@ -210,30 +212,55 @@ object DomInventories extends razie.Logging {
           val kn = k.toString
           val oname = invClsName
 
+          // todo simplify this - i'm really just trying to decorate with known types from classdef - otherwise should preserve the types found...
+
+          // classdef has parm defn as object - try to parse as json
           classDef.parms.find(_.name == kn).map { cp =>
-              if(cp.isOfType(WTypes.wt.JSON) && jvalue.isDefined) {
+            if(cp.isOfType(WTypes.wt.JSON) && jvalue.isDefined) {
+              cp.copy(value = P.fromTypedValue("", jvalue.get, cp.ttype).value)
+            } else if(cp.ttype.isArray && jvalue.isDefined) {
                 cp.copy(value = P.fromTypedValue("", jvalue.get, cp.ttype).value)
               } else {
                 cp.copy(value = P.fromTypedValue("", jvalue.mkString).value)
               }
           } getOrElse {
-            val value = jvalue.mkString
+            // classdef don't have member - see if it's json
             // todo this is odata remnants...
             if (kn.startsWith("_") && kn.endsWith(("_value"))) {
               val PAT = """_(.+)_value""".r
               val PAT(n) = kn
 
+              val value = jvalue.mkString
               classDef.parms.find(_.name == n).map { cpk =>
                 cpk.copy(value = P.fromTypedValue("", value).value)
               } getOrElse {
                 P.of(kn, value)
               }
-            } else
-              P.of(kn, value)
+            } else {
+              // this is for normal fields
+              jvalue.map(v=>
+                P.of(kn, v) // try typed value
+              ).getOrElse {
+                // todo why not undefined?
+                P.of(kn, "")
+              }
+            }
           }
         }
 
-    O(name, classDef.name, parms)
+    val kn = classDef.key
+    val kv = parms.find(_.name == kn).map(_.currentStringValue).getOrElse(name)
+
+    val ref = new FullSpecRef(
+      "",
+      "", // todo find inv/conn
+      classDef.name,
+      kv,
+      "",
+      "" // todo find realm
+    )
+
+    O(name, classDef.name, parms).withRef(ref)
   }
 
   /** turn a json value into a nice object, merge with class def and mark refs etc */
@@ -423,6 +450,7 @@ object DomInventories extends razie.Logging {
           log("sub-flow return nothing, error or not a list - so no asset found!")
           DIQueryResult(0, Nil, p.toList)
         } else if (p.get.isOfType(WTypes.wt.JSON)) {
+          // we got one object from a find()
           val j = p.get.calculatedTypedValue(ECtx.empty).asJson
 
           // if schema populated, if not get from ref
@@ -439,7 +467,7 @@ object DomInventories extends razie.Logging {
           else
             DIQueryResult(1, List(jToA(p.get, j, realm, None)))
         } else {
-          // array
+          // we got an array from a query
           val l = p.get.calculatedTypedValue(ECtx.empty).asArray
           val cls = WikiDomain(realm).rdom.classes.get(
             // if schema populated, if not get from ref
@@ -454,7 +482,7 @@ object DomInventories extends razie.Logging {
               if (c.isDefined) {
                 val k = jtok(j, c)
                 val o = oFromJMap(k, j.toMap, c.get, c.get.name, Array.empty)
-                oToA(o, ref, j.toMap, realm, c)
+                oToA(o, ref.copy(key = k), j.toMap, realm, c)
               }
               else
                 jToA(o, j, realm, None)
@@ -470,9 +498,8 @@ object DomInventories extends razie.Logging {
 
               if (c.isDefined) {
                 val k = jtok(j, c)
-                val o = oFromJMap(k, j.toMap, c.get, c.get.name,
-                  Array.empty)
-                oToA(o, ref, j.toMap, realm, c)
+                val o = oFromJMap(k, j.toMap, c.get, c.get.name, Array.empty)
+                oToA(o, ref.copy(key = k), j.toMap, realm, c)
               }
               else
                 jToA(P.fromSmartTypedValue(Diesel.PAYLOAD, j), j, realm, None)
