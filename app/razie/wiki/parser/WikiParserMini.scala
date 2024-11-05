@@ -74,8 +74,8 @@ trait WikiParserMini extends ParserBase with CsvParser with Tokens {
     case "[[[" ~ name ~ "]]]" => """<a href="http://en.wikipedia.org/wiki/%s"><i>%s</i></a>""".format(name, name)
   }
 
-  def wiki2: PS = "[[" ~ """[^]]*""".r ~ "]]" ^^ {
-    case "[[" ~ name ~ "]]" => {
+  def wiki2: PS = "[[" ~> """[^]]*""".r <~ "]]" ^^ {
+    case name => {
       val p = parseAll(wikiPropsRep, name)
       if (p.successful) {
         // this is an ilink with auto-props in the name/label

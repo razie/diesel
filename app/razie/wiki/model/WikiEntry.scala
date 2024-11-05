@@ -199,7 +199,7 @@ case class WikiEntry(
 
   def cloneProps(m: Map[String, String], sby: ObjectId) = copy(props = this.props ++ m)
 
-  def withTags(s: Seq[String], sby: ObjectId) = copy(tags=s)
+  def withTags(s: Seq[String], sby: ObjectId = null): WikiEntry = copy(tags=s)
 
   def findParent = parent flatMap (p => Wikis(realm).find(p))
 
