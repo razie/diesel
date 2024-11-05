@@ -10,12 +10,13 @@ import com.google.inject.Singleton
 import com.mongodb.casbah.Imports._
 import controllers.{RazController, RazRequest, VErrors}
 import mod.diesel.model._
-import model.{Tags}
+import model.Tags
 import play.api.mvc.{Action, AnyContent, Request}
 import razie.Logging
 import razie.audit.Audit
 import razie.base.scriptingx.DieselScripster.jstypeSafe
 import razie.diesel.dom.DomInventories.{jtok, oFromJMap, oToA}
+import razie.diesel.dom.RDOM.P.isArrayOfSimpleType
 import razie.diesel.dom.RDOM.{A, O, P}
 import razie.diesel.dom._
 import razie.diesel.engine.DieselException
@@ -233,6 +234,68 @@ class DomainController extends RazController with Logging {
 
   /** POST to create new entity as a result of create */
   def domDoUpsert  (cat:String, path:String="/", plugin:String="", conn:String="") = Filter(activeUser) { implicit stok =>
+    val (realm, dom, rdom, c, oc, iconn, iplugin) = unpack (cat, plugin, conn)
+
+    dom.findPlugins(plugin, conn).headOption.map {inv=>
+      val e = stok.postedContent
+      val s = e.map(_.body).mkString
+      val j = razie.js.parse(s)
+      j.remove("content")
+      j.remove("tags")
+      j.remove("category")
+      j.remove("realm")
+      val k = jtok(j, oc)
+      val ref = SpecRef.make(realm, iplugin, iconn, cat, k)
+      val o = oFromJMap(k, j.toMap, c, c.name, Array.empty)
+      val a = oToA(o, ref, j.toMap, stok.realm, oc)
+
+      val res = DomInventories.resolveEntity(realm, ref, inv.upsert(rdom, ref, a))
+      val pres = res.map(_.asP)
+      pres.filter(x=> x.ttype.isJson && x.value.isDefined).map {j=>
+        retj << (j.value.get.asJson ++ Map ("assetRef" -> res.get.ref.toJson)).toMap
+      }.getOrElse {
+        pres.map {p=>
+          retj << Map(
+            "assetRef" -> res.get.ref.toJson,
+            "value" -> p.currentStringValue
+          )
+        }.getOrElse {
+          NotFound(s"Object not resolved! $iplugin / $iconn / $cat / $k")
+            .withHeaders("dieselError" -> "Object not resolved!")
+        }
+      }
+    } getOrElse {
+      NotFound(s"Inventory not found for $iplugin / $iconn / $cat")
+        .withHeaders("dieselError" -> "Plugin not found")
+    }
+  }
+
+  /** start forms to create a new instance of cat */
+  def domStartEdit  (cat:String, id:String, path:String="/", plugin:String="", conn:String="") = FAUR { implicit stok =>
+    val (realm, dom, rdom, c, oc, iconn, iplugin) = unpack (cat, plugin, conn)
+
+    val left = rdom.assocs.filter(_.z == cat)
+    val right = rdom.assocs.filter(x=> x.a == cat && !WTypes.PRIMARY_TYPES.contains(x.z))
+    val ipath = if (path == "/") path + cat else path
+
+    def mkLink(s: String, dir: String, assoc: Option[RDOM.A]) = {
+      routes.DomainController.catBrowser("diesel", realm, realm, s, path + "/" + s).toString()
+    }
+
+    val dov = DomInventories.findByRef(SpecRef.make(realm, iplugin, iconn, cat, id))
+
+    val obj = dov.flatMap(_.getValueO).toList.flatMap(_.parms).map(x=>(x.name, x))
+
+//    val obj = DomInventories.defaultClassAttributes(Nil, oc)(new StaticECtx().withDomain(rdom))
+
+    ROK.r apply { implicit stok =>
+      // todo create empty object with defaults
+      views.html.modules.diesel.createDD(iplugin, iconn, realm, cat, left, right, WikiDomain(realm), obj, Map.empty)(mkLink)
+    }
+  }
+
+  /** POST to create new entity as a result of create */
+  def domDoEdit  (cat:String, path:String="/", plugin:String="", conn:String="") = Filter(activeUser) { implicit stok =>
     val (realm, dom, rdom, c, oc, iconn, iplugin) = unpack (cat, plugin, conn)
 
       dom.findPlugins(plugin, conn).headOption.map {inv=>

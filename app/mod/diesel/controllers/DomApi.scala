@@ -1414,26 +1414,29 @@ class DomApi extends DomApiBase with Logging {
     val au = activeUser(stok.ireq, stok.errCollector);
     val b  = au.filter(deemedMemberOfRealm(_, stok.realm))
 
-    assert (b.isDefined)
+    if (b.isDefined) {
 
-    // maybe path is a local variable
-    val newpath = Enc.fromUrl(ipath + "?") + stok.ireq.rawQueryString
-    val path = if(newpath.contains("""${""")) {
-      // todo security hole - they can evaluate expressions and retrieve stuff by trying to proxy to an echo /diesel/proxy/http://myechoqp.com?p1=${diesel.user} etc
-      // since this is always wiht a user creds, i don't see what they could find though...?
-      val expr = "\"" + newpath + "\""
-      new CExpr[String](expr).apply("")(new StaticECtx())
-    } else newpath
+      // maybe path is a local variable
+      val newpath = Enc.fromUrl(ipath + "?") + stok.ireq.rawQueryString
+      val path = if (newpath.contains("""${""")) {
+        // todo security hole - they can evaluate expressions and retrieve stuff by trying to proxy to an echo /diesel/proxy/http://myechoqp.com?p1=${diesel.user} etc
+        // since this is always wiht a user creds, i don't see what they could find though...?
+        val expr = "\"" + newpath + "\""
+        new CExpr[String](expr).apply("")(new StaticECtx())
+      } else newpath
 
-    clog << "diesel/proxy GET " + path
-    val host = ipath.split("(?<![/:])/", 2).head
-    val p = if (ipath startsWith("https")) "https" else "http"
-    val sc = SnakkCall(p, "GET", path, Map.empty, "", None).setUrl(Snakk.url(path))
-    val ec = sc.eContent
-    Ok(ec.body)
+      clog << "diesel/proxy GET " + path
+      val host = ipath.split("(?<![/:])/", 2).head
+      val p = if (ipath startsWith ("https")) "https" else "http"
+      val sc = SnakkCall(p, "GET", path, Map.empty, "", None).setUrl(Snakk.url(path))
+      val ec = sc.eContent
+      Ok(ec.body)
         .as(ec.contentType)
         .withHeaders("Access-Control-Allow-Origin" -> "*")
         .withCookies(Cookie("dieselProxyHost", host, Some(10)))
+    } else {
+      Unauthorized("You need more karma for diesel.proxy eh?")
+    }
   }
 
   /** proxy real service GET */
@@ -1442,41 +1445,44 @@ class DomApi extends DomApiBase with Logging {
     val au = activeUser(stok.ireq, stok.errCollector);
     val b  = au.filter(deemedMemberOfRealm(_, stok.realm))
 
-    assert (b.isDefined)
+    if (b.isDefined) {
 
-    val newpath = Enc.fromUrl(ipath + "?") + stok.ireq.rawQueryString
-    val path = if(newpath.contains("""${""")) {
-      // todo security hole - they can evaluate expressions and retrieve stuff by trying to proxy to an echo /diesel/proxy/http://myechoqp.com?p1=${diesel.user} etc
-      // since this is always wiht a user creds, i don't see what they could find though...?
-      val expr = "\"" + newpath + "\""
-      new CExpr[String](expr).apply("")(new StaticECtx())
-    } else newpath
+      val newpath = Enc.fromUrl(ipath + "?") + stok.ireq.rawQueryString
+      val path = if (newpath.contains("""${""")) {
+        // todo security hole - they can evaluate expressions and retrieve stuff by trying to proxy to an echo /diesel/proxy/http://myechoqp.com?p1=${diesel.user} etc
+        // since this is always wiht a user creds, i don't see what they could find though...?
+        val expr = "\"" + newpath + "\""
+        new CExpr[String](expr).apply("")(new StaticECtx())
+      } else newpath
 
-    val raw = request.body.asBytes()
-    val body = raw.map(a => new String(a.toArray)).getOrElse("")
+      val raw = request.body.asBytes()
+      val body = raw.map(a => new String(a.toArray)).getOrElse("")
 
-    clog << "diesel/proxy POST " + path + " WITH BODY:\n" + body
+      clog << "diesel/proxy POST " + path + " WITH BODY:\n" + body
 
-    val host = ipath.split("(?<![/:])/", 2).head
-    val p = if (ipath startsWith("https")) "https" else "http"
-    val headers = stok.ireq.headers.toMap.map(t=>(t._1, t._2.toList))
-    val sc = SnakkCall(p, "POST", path, headers, body, None)
-    try {
-      val ec = sc.eContent
-      Ok(ec.body)
+      val host = ipath.split("(?<![/:])/", 2).head
+      val p = if (ipath startsWith ("https")) "https" else "http"
+      val headers = stok.ireq.headers.toMap.map(t => (t._1, t._2.toList))
+      val sc = SnakkCall(p, "POST", path, headers, body, None)
+      try {
+        val ec = sc.eContent
+        Ok(ec.body)
           .as(ec.contentType)
           .withHeaders("Access-Control-Allow-Origin" -> "*")
           .withCookies(Cookie("dieselProxyHost", host, Some(10)))
-    } catch {
-      // pass code that came from comms - likely other side threw a
-      case cex : CommRtException => {
-        Status(cex.httpCode)
+      } catch {
+        // pass code that came from comms - likely other side threw a
+        case cex: CommRtException => {
+          Status(cex.httpCode)
             .apply("PROXIED ERROR: " + cex.details)
             .withHeaders("Access-Control-Allow-Origin" -> "*")
             .withCookies(Cookie("dieselProxyHost", host, Some(10)))
-      }
+        }
 
-      case t : Throwable => throw t
+        case t: Throwable => throw t
+      }
+    } else {
+      Unauthorized("You need more karma for diesel.proxy eh?")
     }
   }
 
