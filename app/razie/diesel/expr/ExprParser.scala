@@ -56,6 +56,7 @@ trait ExprParser extends RegexParsers {
       "flatten" <~ ws |
       "filter" <~ ws |
       "exists" <~ ws |
+      "split" <~ ws |
       "mkString" <~ ws |
       "catPath" <~ ws |
       "|c" <~ ws | "|>" <~ ws | "|" <~ ws |
@@ -195,12 +196,12 @@ trait ExprParser extends RegexParsers {
     case i ~ l => i :: l
   }
 
-  def xpath: Parser[String] = ("*" | "**" | xpathElem) ~ rep("/".r ~ xpathElem) ^^ {
+  def xpath: Parser[String] = ("*" | "**" | xpathElem) ~ rep(" */ *".r ~ xpathElem) ^^ {
     case i ~ l => (i :: l.map { x => x._1 + x._2}).mkString("")
   }
 
   // /{attr}@gigi:$name[cond]/
-  def xpathElem: Parser[String] = """(\{.*\})*([@])*([\w]+\:)*([\$|\w\.-]+|\**)(\[.*\])*""".r ^^ {
+  def xpathElem: Parser[String] = """(\{.*\})*([@])*([\w]+\:)*([\$|\w\.-]+|\**) *(\[.*\])*""".r ^^ {
     case e => e.toString
   }
 
@@ -214,7 +215,7 @@ trait ExprParser extends RegexParsers {
 
   // x => x + 4
   def lambda: Parser[Expr] = ident ~ ows ~ "=>" ~ ows ~ (expr2 | "(" ~> expr <~ ")") ^^ {
-    case id ~ _ ~ a ~ _ ~ ex => LambdaFuncExpr(id, ex)
+    case arg ~ _ ~ a ~ _ ~ ex => LambdaFuncExpr(arg, ex)
   }
 
   //
@@ -270,7 +271,9 @@ trait ExprParser extends RegexParsers {
   def xpident: Parser[Expr] = xpp //| jpp
 
   // XP identifier (either json or xml)
-  def xpp: Parser[Expr] = (("xp:" | "xpl:" | "xpe:" | "xpa:" | "xpla:") ~ xpath) ^^ { case prefix ~ i => new XPathIdent(prefix.replaceAllLiterally(":","" ), i) }
+  def xpp: Parser[Expr] = (("xp:" | "xpl:" | "xpe:" | "xpa:" | "xpla:") ~ xpath) ^^ {
+    case prefix ~ i => new XPathIdent(prefix.replaceAllLiterally(":","" ), i)
+  }
 
   // XP identifier (either json or xml)
 //  def jpp: Parser[Expr] = ("jp:" ~ jpath) ^^ { case x ~ i => new XPathIdent(i) }
@@ -379,7 +382,8 @@ private def accessorIdent: Parser[RDOM.P] = "." ~> ident ^^ { case id => P("", i
     * <> means it's a ref, not ownership
     * * means it's a list
     */
-  def optType: Parser[WType] = opt((" *: *<> *".r | " *: *".r) ~
+  def optType: Parser[WType] = opt(
+    (" *: *<> *".r | " *: *".r) ~
       // todo make it work better with the opt below - it stopped working at some point
 //      opt(" *<> *") ~
       qident ~

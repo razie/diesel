@@ -18,7 +18,7 @@ import razie.diesel.dom.RDOM.P
 import razie.diesel.dom._
 import razie.diesel.engine.exec.EEFunc
 import razie.diesel.engine.nodes.{EInfo, EMap, EMock, EMsg, ERule, EVal, HasPosition}
-import razie.diesel.engine.{AstKinds, DieselAppContext, DomAst, EContent}
+import razie.diesel.engine.{AstKinds, DEComplete, DEReq, DieselAppContext, DomAst, DomState, EContent, KeepOnlySomeSiblings}
 import razie.tconf.EPos
 import razie.wiki.{Enc, EncUrl}
 import scala.collection.mutable.{HashMap, ListBuffer}
@@ -233,14 +233,6 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
         P.fromTypedValue("", Enc(av), WTypes.wt.STRING)
       }
 
-      case "trim" => {
-        val av = firstParm.getOrElse {
-          throw new DieselExprException("Need one arguments.")
-        }.calculatedValue
-
-        P.fromTypedValue("", av.trim(), WTypes.wt.STRING)
-      }
-
       case "rangeList" => {
         val f = firstParm
             .getOrElse {
@@ -281,6 +273,14 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
               // more failure resistant
               P.fromTypedValue("", 0, WTypes.wt.NUMBER)
             )
+      }
+
+      case "trim" => {
+        val av = firstParm.getOrElse {
+          throw new DieselExprException("Need one arguments.")
+        }.calculatedValue
+
+        P.fromTypedValue("", av.trim(), WTypes.wt.STRING)
       }
 
       case "toUpper" => {
@@ -330,6 +330,19 @@ case class AExprFunc(val expr: String, parms: List[RDOM.P]) extends Expr {
 
           val res = new Base64(false).encode(p1.getBytes)
           val pv = new String(res).replaceAll("\n", "").replaceAll("\r", "")
+          new P("", pv, WTypes.wt.STRING).withValue(pv, WTypes.wt.STRING)
+        }.getOrElse(
+          throw new DieselExprException(s"No arguments for $expr")
+        )
+      }
+
+      case "base64decode" => {
+        firstParm.map { p =>
+          val p1 = p.calculatedValue
+          import org.apache.commons.codec.binary.Base64
+
+          val res = new Base64(false).decode(p1.getBytes)
+          val pv = new String(res)
           new P("", pv, WTypes.wt.STRING).withValue(pv, WTypes.wt.STRING)
         }.getOrElse(
           throw new DieselExprException(s"No arguments for $expr")

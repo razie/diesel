@@ -456,13 +456,13 @@ case class BCMPSingle(a: Expr) extends BoolExpr(a.toDsl) {
 
           case _ if "false" == in.currentStringValue => false
 
-          case WTypes.UNDEFINED => false // todo is this cocher?
+          case WTypes.UNDEFINED => false // todo is this kosher?
 
           case s @ _ => {
             val t = if (s.length > 0) s else ":unknown"
             clog << (s"Found $t expected Boolean")
             throw new DieselExprException(
-              s"Found $t expected Boolean details: ($a)"
+              s"Found $t expected Boolean in expr: (${a.toDsl} for input: $in)"
             )
           }
         }

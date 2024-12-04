@@ -32,8 +32,7 @@ case class JBlockExpr(ex: List[(String, Expr)], schema:Option[String]=None) exte
 
    // if there's a class definition and it has defaults, add them:
    // todo could speed up by caching if has defaults in the class spec, from parsing
-   val c = schema
-       .flatMap(cls=> ctx.domain.flatMap(_.classes.get(cls)))
+   val c = schema.flatMap(cls=> ctx.domain.flatMap(_.classes.get(cls)))
 
     val newMap = DomInventories.defaultClassAttributes(origMap, c)
 

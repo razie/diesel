@@ -17,7 +17,7 @@ case class LambdaFuncExpr(argName:String, ex: Expr, parms: List[RDOM.P]=Nil) ext
   override def apply(v: Any)(implicit ctx: ECtx) = applyTyped(v).calculatedValue
 
   override def applyTyped(v: Any)(implicit ctx: ECtx): P = {
-    val sctx = new StaticECtx(List(P.fromTypedValue(argName, v)), Some(ctx))
+    val sctx = new StaticECtx(List(P.fromTypedValue(argName, v)), Some(ctx), ctx.curNode)
     val res = ex.applyTyped(v)(sctx)
     res
   }

@@ -18,7 +18,7 @@ import razie.diesel.engine.nodes.EWarning
   *
   * NOTE this is used to demarcate rule scopes too
   */
-class RuleScopeECtx(
+class RuleScopeECtx (
   cur: List[P] = Nil,
   base: Option[ECtx] = None,
   curNode: Option[DomAst] = None)
