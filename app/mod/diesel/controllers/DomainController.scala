@@ -19,9 +19,9 @@ import razie.diesel.dom.DomInventories.{jtok, oFromJMap, oToA}
 import razie.diesel.dom.RDOM.P.isArrayOfSimpleType
 import razie.diesel.dom.RDOM.{A, O, P}
 import razie.diesel.dom._
-import razie.diesel.engine.DieselException
+import razie.diesel.engine.{DieselException, DomEngECtx}
 import razie.diesel.engine.nodes.EMsg
-import razie.diesel.expr.StaticECtx
+import razie.diesel.expr.{SimpleECtx, StaticECtx}
 import razie.hosting.Website
 import razie.tconf.{FullSpecRef, SpecRef}
 import razie.wiki.admin.Autosave
@@ -36,6 +36,11 @@ class DomainController extends RazController with Logging {
 
 
   // ============================ DOMAIN browsing ================
+
+  /** make an engine settings from request */
+  def ctxFromReq (req:RazRequest) = {
+    new DomEngECtx(DomEngineHelper.settingsFrom(req))
+  }
 
   def domain = Action { implicit request =>
     val wg = WG.fromRealm(Website.realm)
@@ -117,7 +122,9 @@ class DomainController extends RazController with Logging {
         // we're navigating backwards a many to one association
         s"/diesel/dom/query/$s/${as}/'${o.get.name}'?plugin=$plugin&conn=$conn"
       } getOrElse
-          routes.DomainController.catBrowser(pl, co, realm, s, newPath).toString()
+//        http://localhost:9000/diesel/catBrowser/diesel.inv.wikij/default/devblinq/Integration?path=%2FIntEnv%2FIntegration
+        s"/diesel/catBrowser/$plugin/$conn/$realm/$s?path=$newPath"
+//          routes.DomainController.catBrowser(pl, co, realm, s, newPath).toString()
     }
 
     ROK.r.withErrors(errors) apply  { implicit stok =>
@@ -249,7 +256,7 @@ class DomainController extends RazController with Logging {
       val o = oFromJMap(k, j.toMap, c, c.name, Array.empty)
       val a = oToA(o, ref, j.toMap, stok.realm, oc)
 
-      val res = DomInventories.resolveEntity(realm, ref, inv.upsert(rdom, ref, a))
+      val res = DomInventories.resolveEntity(realm, ref, inv.upsert(rdom, ref, a))(ctx=ctxFromReq(stok))
       val pres = res.map(_.asP)
       pres.filter(x=> x.ttype.isJson && x.value.isDefined).map {j=>
         retj << (j.value.get.asJson ++ Map ("assetRef" -> res.get.ref.toJson)).toMap
@@ -282,7 +289,7 @@ class DomainController extends RazController with Logging {
       routes.DomainController.catBrowser("diesel", realm, realm, s, path + "/" + s).toString()
     }
 
-    val dov = DomInventories.findByRef(SpecRef.make(realm, iplugin, iconn, cat, id))
+    val dov = DomInventories.findByRef(SpecRef.make(realm, iplugin, iconn, cat, id))(ctx=ctxFromReq(stok))
 
     val obj = dov.flatMap(_.getValueO).toList.flatMap(_.parms).map(x=>(x.name, x))
 
@@ -311,7 +318,7 @@ class DomainController extends RazController with Logging {
         val o = oFromJMap(k, j.toMap, c, c.name, Array.empty)
         val a = oToA(o, ref, j.toMap, stok.realm, oc)
 
-        val res = DomInventories.resolveEntity(realm, ref, inv.upsert(rdom, ref, a))
+        val res = DomInventories.resolveEntity(realm, ref, inv.upsert(rdom, ref, a))(ctx=ctxFromReq(stok))
         Ok(res.map(_.asP.currentStringValue).mkString)
       } getOrElse {
         NotFound(s"Inventory not found for $iplugin / $iconn / $cat")
@@ -382,7 +389,7 @@ class DomainController extends RazController with Logging {
       implicit stok =>
         val (realm, dom, rdom, c, oc, iconn, iplugin) = unpack (cat, plugin, conn, checkCat=false)
 
-        val dov = DomInventories.findByRef(SpecRef.make(realm, iplugin, iconn, cat, id))
+        val dov = DomInventories.findByRef(SpecRef.make(realm, iplugin, iconn, cat, id))(ctx=ctxFromReq(stok))
 
         val o = dov.flatMap(_.getValueO)
 
@@ -406,7 +413,7 @@ class DomainController extends RazController with Logging {
       val (realm, dom, rdom, c, oc, iconn, iplugin) = unpack(cat, plugin, conn)
 
       val ref = SpecRef.make(stok.realm, iplugin, iconn, cat, "")
-      val res = DomInventories.findByQuery(ref, Left(cat + "/" + parm + "/" + v), 0, 100, Array.empty[String])
+      val res = DomInventories.findByQuery(ref, Left(cat + "/" + parm + "/" + v), 0, 100, Array.empty[String])(ctx=ctxFromReq(stok))
       val list = res.data
 
       val fieldsToShow = c.props.find(_.name == "ui.fieldsToShow").map(_.currentStringValue).getOrElse("").split(",")
@@ -495,7 +502,7 @@ class DomainController extends RazController with Logging {
 
             val p = invlist.head
             val ref = SpecRef.make(stok.realm, p.name, p.conn, cat, "")
-            val res = DomInventories.listAll(ref, start = 0, limit = 100, Array.empty[String])
+            val res = DomInventories.listAll(ref, start = 0, limit = 100, Array.empty[String])(ctx=ctxFromReq(stok))
 
             val fieldsToShow = c.props.find(_.name == "ui.fieldsToShow").map(_.currentStringValue).getOrElse("").split(
               ",")
@@ -532,7 +539,7 @@ class DomainController extends RazController with Logging {
     val c = rdom.classes.get(cat)
 
     val bodyAsList = body.value.get.asJson.map (t=> (t._1, P.fromSmartTypedValue(t._1, t._2))).toList
-    val obj = DomInventories.calculatedClassAttributes(body, bodyAsList, c)(new StaticECtx().withDomain(rdom))
+    val obj = DomInventories.calculatedClassAttributes(body, bodyAsList, c)(ctxFromReq(razRequest).withDomain(rdom))
 
     Ok(razie.js.tojsons(obj.toMap)).as("application/json")
   }
