@@ -221,9 +221,15 @@ object Diesel {
             WTypes.REGEX.equalsIgnoreCase(p.ttype.name) ||
             WTypes.UNKNOWN.equalsIgnoreCase(p.ttype.name) ||
             WTypes.URL.equalsIgnoreCase(p.ttype.name) ||
-            p.ttype.name == "")
+            p.ttype.name == "") {
+          val enums = c.enumForParm(p.name)
+          if (enums.length > 0) {
+            val choices = enums.split(",").mkString("|", "|", "")
+            s"""${p.name} </td>\n  <td> {{f:${p.name}:type=select,choices=$choices}}"""
+          } else {
             s"""${p.name} </td>\n  <td> {{f:${p.name}:}}"""
-        else if(WTypes.NUMBER.equalsIgnoreCase(p.ttype.name) ||
+          }
+        } else if(WTypes.NUMBER.equalsIgnoreCase(p.ttype.name) ||
             WTypes.INT.equalsIgnoreCase(p.ttype.name) ||
             WTypes.FLOAT.equalsIgnoreCase(p.ttype.name)
         )
