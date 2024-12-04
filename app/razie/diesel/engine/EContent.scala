@@ -86,18 +86,13 @@ class EContent(
   /** headers as a nice lowercase P */
   def httpCodep = P.fromTypedValue( EESnakk.SNAKK_HTTP_CODE, code)
 
-  def mkSnakkResponse = {
-    P.fromSmartTypedValue(
-      "snakk",
-      Map(
-        "response" -> Map (
-          "headers" -> headersp.value.get.asJson,
-          "code" -> code
-          // no body - it's always in payload
-        )
-      )
-    )
+  def addResp (m:Map[String,Any]) = {
+    if (code < 200 || code > 299) m + (
+      "text" -> body.take(2000)
+      ) else m
   }
+
+  def mkSnakkResponse = EContent.mkSnakkResponse(headers, code, body)
 
   // an object with "values" member is specific diesel response when the flow doesn't send over one specific value
 
@@ -306,18 +301,22 @@ object EContent {
       WTypes.JSON)
   }
 
-  def mkSnakkResponse (headers:Map[String,String], code:Int) = {
+  private def addResp (code: Int, body:String, m:Map[String,Any]) = {
+    if (code < 200 || code > 299) m + (
+      "text" -> body.take(2000)
+      ) else m
+  }
+
+  def mkSnakkResponse (headers:Map[String,String], code:Int, body:String) = {
     P.fromSmartTypedValue(
       "snakk",
       Map(
-        "response" -> Map (
+        "response" -> addResp(code, body, Map (
           "headers" -> headersp(headers).value.get.asJson,
           "code" -> code
-          // no body - it's always in payload
-        )
+        ))
       )
     )
   }
-
 }
 

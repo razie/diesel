@@ -302,8 +302,15 @@ class EESnakk extends EExecutor("snakk") with Logging {
                 sc.iHeaders.getOrElse(Map.empty),
                 None)
               c.warnings = List(EWarning("Parsing", html(e.getLocalizedMessage)))
-              eres += EVal(P.fromSmartTypedValue(SNAKK_ERROR, e).withCachedValue(e, WTypes.wt.EXCEPTION, html(e.toString, 10000)))
-              eres += EVal(new P("snakkErrorOld", html(e.toString, 10000)))
+
+              if(e.isInstanceOf[CommRtException] && e.asInstanceOf[CommRtException].httpCode > 0 ) {
+                val ct = e.asInstanceOf[CommRtException]
+                val details = if(ct.details.length == 0) ct.getMessage else ct.details
+                eres += EVal(P.fromSmartTypedValue(SNAKK_ERROR, e).withCachedValue(e, WTypes.wt.EXCEPTION, html(s"${ct.httpCode} details:${details}", 10000)))
+              } else {
+                eres += EVal(P.fromSmartTypedValue(SNAKK_ERROR, e).withCachedValue(e, WTypes.wt.EXCEPTION, html(e.toString, 10000)))
+              }
+
               c
             }
           }.get
@@ -391,16 +398,20 @@ class EESnakk extends EExecutor("snakk") with Logging {
         eres += new EVal(PAYLOAD, reply.body)
       }
 
+      // need to propagate...
+      val resp = reply.mkSnakkResponse
+      ctx.getScopeCtx.put(resp)
+
       // make sure payload is last
       eres.eres.filter {
         case v@EVal(p) if p.name == PAYLOAD => false
         case x@_ => true
       } :::
           new EInfo(SNAKK_RESPONSE + ": " + Enc.escapeHtml(reply.body.take(25)), Enc.escapeHtml(trimmed(reply.body, 5000))) ::
-          new EVal(new P(SNAKK_HTTP_RESPONSE, trimmed(reply.body, 5000))).withKind(AstKinds.TRACE) ::
+          new EVal(new P(SNAKK_HTTP_RESPONSE, trimmed(reply.body, 5000))).withKind(AstKinds.VERBOSE) ::
           new EVal(reply.httpCodep).withKind(AstKinds.VERBOSE) :: // todo deprecated - remove
           new EVal(reply.headersp).withKind(AstKinds.VERBOSE) ::  // todo deprecated - remove
-          new EVal(reply.mkSnakkResponse).withKind(AstKinds.TRACE) ::
+          new EVal(resp).withKind(AstKinds.GENERATED) ::
           traceId :::
           eres.eres.collect {
             case v@EVal(p) if p.name == PAYLOAD => v
@@ -464,16 +475,20 @@ class EESnakk extends EExecutor("snakk") with Logging {
         val regex = x.find(_.name == "regex") orElse findin("regex") map (_.currentStringValue)
         val strs = content.extract(Map.empty, specs.filter(_._1 != "regex"), regex)
 
+        // need to propagate...
+        val resp = content.mkSnakkResponse
+        ctx.getScopeCtx.put(resp)
+
         // add the resulting values
         eres.eres ::: strs.map(t => new P(t._1, t._2)).map { x =>
           EVal(x).withPos(pos)
         } :::
             new ETrace(SNAKK_RESPONSE + Enc.escapeHtml(content.body.take(25)), Enc.escapeHtml(trimmed(content.body, 5000))) ::
-            new EVal(new P(SNAKK_HTTP_RESPONSE, trimmed(content.body, 5000))).withKind(AstKinds.TRACE) ::
+            new EVal(new P(SNAKK_HTTP_RESPONSE, trimmed(content.body, 5000))).withKind(AstKinds.VERBOSE) ::
             new EVal(content.httpCodep).withKind(AstKinds.VERBOSE) ::  // todo deprecated - remove
             new EVal(content.headersp).withKind(AstKinds.VERBOSE) ::  // todo deprecated - remove
             EVal(P.undefined(SNAKK_ERROR)) ::
-            new EVal(content.mkSnakkResponse).withKind(AstKinds.TRACE) ::
+            new EVal(resp).withKind(AstKinds.GENERATED) ::
             new EVal(PAYLOAD, content.body) ::
             Nil
       } getOrElse
@@ -506,7 +521,7 @@ class EESnakk extends EExecutor("snakk") with Logging {
       }
     } catch {
       case t: Throwable => {
-        caughtSnakkException(t,  httpOptions(in.attrs), response, startMillis, eres)
+        caughtSnakkException(t,  httpOptions(in.attrs), response, startMillis, eres)(ctx)
       }
     }
   }
@@ -890,7 +905,7 @@ object EESnakk {
 
   override def toString = "$executor::snakk "
 
-  def caughtSnakkException (t:Throwable, httpOptions:Map[String, Any], response:String, startMillis:Long, eres:InfoAccumulator) = {
+  def caughtSnakkException (t:Throwable, httpOptions:Map[String, Any], response:String, startMillis:Long, eres:InfoAccumulator)(ctx: ECtx) = {
     var code = -1
     var errContent = ""
 
@@ -940,7 +955,7 @@ object EESnakk {
     eres += ETrace("Response: ", html(response)) :: Nil
 
     if (code > 0) eres += EVal(P.fromTypedValue(EESnakk.SNAKK_HTTP_CODE, code)).withKind(AstKinds.TRACE) :: Nil
-    if (errContent.length > 0) eres += EVal(P.fromTypedValue(EESnakk.SNAKK_HTTP_RESPONSE, errContent)) :: Nil
+    if (errContent.length > 0) eres += EVal(P.fromTypedValue(EESnakk.SNAKK_HTTP_RESPONSE, errContent)).withKind(AstKinds.TRACE) :: Nil
 
     val headers = if(t.isInstanceOf[CommRtException] && t.asInstanceOf[CommRtException].uc != null) {
       val uc = t.asInstanceOf[CommRtException].uc
@@ -960,22 +975,34 @@ object EESnakk {
       val url = DieselAssets.mkEmbedLink(wid)
       val href = DieselAssets.mkAhref(wid)
 
-      ELink(
-        s"dieselFlow spawned $href",
-        url)
+      ELink(s"dieselFlow spawned $href", url)
     }.toList
 
-    eres += EVal(EContent.mkSnakkResponse(headers.asInstanceOf[Map[String,String]], code)).withKind(AstKinds.TRACE)
+    // need to propagate...
+    val resp = EContent.mkSnakkResponse(headers, code, errContent)
+    ctx.getScopeCtx.put(resp)
+
+    eres += EVal(resp).withKind(AstKinds.GENERATED)
 
     eres += traceId
 
     eres += new EVal(P.undefined(PAYLOAD))
 
-    eres +=
+    if(t.isInstanceOf[CommRtException] && t.asInstanceOf[CommRtException].httpCode > 0 ) {
+      val ct = t.asInstanceOf[CommRtException]
+      val details = if(ct.details.length == 0) ct.getMessage else ct.details
+      eres +=
         // need to create a val - otherwise DomApi.rest returns the last Val
-        EVal(P.fromSmartTypedValue(SNAKK_ERROR, t).withCachedValue(t, WTypes.wt.EXCEPTION, html(cause.toString, 10000))) ::
-        EVal(new P("snakkErrorOld", html(cause.toString, 10000))) ::
-            Nil
+        EVal(P.fromSmartTypedValue(SNAKK_ERROR, t)
+          .withCachedValue(t, WTypes.wt.EXCEPTION, html(s"${ct.httpCode} details:${details}", 10000))) ::
+          Nil
+    } else {
+      eres +=
+        // need to create a val - otherwise DomApi.rest returns the last Val
+        EVal(P.fromSmartTypedValue(SNAKK_ERROR, t)
+          .withCachedValue(t, WTypes.wt.EXCEPTION, html(cause.toString, 10000))) ::
+          Nil
+    }
   }
 
 }
