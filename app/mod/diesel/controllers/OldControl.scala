@@ -17,6 +17,7 @@ import razie.audit.Audit
 import razie.diesel.dom.DomInventories.{jtok, oFromJMap, oToA}
 import razie.diesel.dom.RDOM.{A, O}
 import razie.diesel.dom._
+import razie.diesel.engine.DomEngECtx
 import razie.diesel.expr.StaticECtx
 import razie.hosting.Website
 import razie.tconf.{FullSpecRef, SpecRef}
@@ -253,7 +254,7 @@ class OldControl extends RazController with Logging {
               start: Long, limit: Long) = RAction./*withAuth.*/noRobots { implicit request =>
 
     val ref = SpecRef.make(request.realm, plugin, conn, cat, "")
-    val res = DomInventories.listAll(ref, start, limit, Array.empty[String])
+    val res = DomInventories.listAll(ref, start, limit, Array.empty[String])(ctx=new DomEngECtx(DomEngineHelper.settingsFrom(request)))
     val list = res.data
 
     if (list.size <= 1) {

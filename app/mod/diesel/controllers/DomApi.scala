@@ -736,6 +736,7 @@ class DomApi extends DomApiBase with Logging {
     */
   def runRest(path: String, verb: String, mock: Boolean): Action[RawBuffer] = Action(parse.raw) { implicit request =>
     implicit val stok = razRequest
+    val verb = stok.ireq.method
 
     try {
 
@@ -1092,9 +1093,7 @@ class DomApi extends DomApiBase with Logging {
                 val res = s"No response template for ${e}.${a}\n" + engine.root.toString
                 ctrace << s"RUN_REST_REPLY $verb $mock $path\n" + res
 
-                // todo maybe calculate in local context not global? What if it's an expression with local identifiers? How do I know which local context was used when it was assigned? Should all payload assignments be values?
-                // one solution: assignments to payload are pre-calculated
-                val payload = engine.ctx.getp(Diesel.PAYLOAD).filter(_.ttype != WTypes.wt.UNDEFINED).map(_.calculatedP(engine.ctx))
+                val payload = engine.extractCalculatedPayload()
 
                 payload.map { p =>
                   if (p.value.isDefined) {
@@ -1396,7 +1395,17 @@ class DomApi extends DomApiBase with Logging {
           Map.empty
         )
 
-        irunDomStr(strMsg)
+        // todo document where scripts are used
+        // todo is it ok to have public access here? why is it needed?
+//        if (true || stok.au.exists(_.isActive)) {
+          irunDomStr(strMsg)
+//        } else {
+//          Future.successful(
+//            Unauthorized("""<span style="color:red;font-weight:bold;">hard skills</span>""")
+//                .withHeaders("dieselReason" -> "Not localhost or not authorized!")
+//                .withHeaders("Access-Control-Allow-Origin" -> "*")
+//          )
+//        }
       } else {
         Future.successful(
           Ok(
@@ -1429,11 +1438,24 @@ class DomApi extends DomApiBase with Logging {
       val host = ipath.split("(?<![/:])/", 2).head
       val p = if (ipath startsWith ("https")) "https" else "http"
       val sc = SnakkCall(p, "GET", path, Map.empty, "", None).setUrl(Snakk.url(path))
-      val ec = sc.eContent
-      Ok(ec.body)
-        .as(ec.contentType)
-        .withHeaders("Access-Control-Allow-Origin" -> "*")
-        .withCookies(Cookie("dieselProxyHost", host, Some(10)))
+
+      try {
+        val ec = sc.eContent
+        Ok(ec.body)
+          .as(ec.contentType)
+          .withHeaders("Access-Control-Allow-Origin" -> "*")
+          .withCookies(Cookie("dieselProxyHost", host, Some(10)))
+      } catch {
+        // pass code that came from comms - likely other side threw a
+        case cex: CommRtException => {
+          Status(cex.httpCode)
+            .apply("PROXIED ERROR: " + cex.details)
+            .withHeaders("Access-Control-Allow-Origin" -> "*")
+            .withCookies(Cookie("dieselProxyHost", host, Some(10)))
+        }
+
+        case t: Throwable => throw t
+      }
     } else {
       Unauthorized("You need more karma for diesel.proxy eh?")
     }

@@ -742,8 +742,11 @@ glyphicon-question-sign"></span></a></sup>: <a href="/diesel/guard/runCheck">Re-
     }
   }
 
+  def dieselRunStory(tq: String, wpath:String, format: String, wait: String, inRealm:String) =
+    dieselRunCheck(tq, wpath, format, wait, inRealm)
+
   /** run another check current reactor */
-  def dieselRunCheck(tq: String, wpath:String, format: String, wait: String) = Filter(activeUser).async { implicit stok =>
+  def dieselRunCheck(tq: String, wpath:String, format: String, wait: String, inRealm:String) = Filter(activeUser).async { implicit stok =>
 
     if (DomGuardian.enabled(stok.realm)) {
       val q = stok.query

@@ -14,7 +14,7 @@ import razie.diesel.dom._
 import razie.diesel.engine.AstKinds._
 import razie.diesel.engine.RDExt._
 import razie.diesel.engine.nodes.EnginePrep.listStoriesWithFiddles
-import razie.diesel.engine.nodes.{EMsg, EVal, EnginePrep, HasPosition}
+import razie.diesel.engine.nodes.{EMsg, ERule, EVal, EnginePrep, HasPosition}
 import razie.diesel.engine._
 import razie.diesel.model.DieselMsg
 import razie.diesel.utils.DomUtils.{SAMPLE_SPEC, SAMPLE_STORY}
@@ -33,15 +33,24 @@ import scala.util.{Success, Try}
 /** utilities for fiddling */
 object DomFiddles {
 
-  /** get the parsed AST info to paint the markers in the page */
+  /** get the parsed AST info with line numbers, to paint the markers in the page */
   def getAstInfo(ipage: WikiEntry) = {
     val domList = ipage.collector.getOrElse(DOM_LIST, List[Any]()).asInstanceOf[List[Any]].reverse
-    val ast = domList.collect {
+
+    // todo rules have children ARGH - need to flatten the domain looking inside objects here?
+    val flat = domList.flatMap {
+      case rule : ERule => rule :: rule.i
+      case h : HasPosition if h.pos.isDefined => List(h)
+      case _ => Nil // todo ifnore rest?
+    }
+
+    // collect all known positions
+    val ast = flat.collect {
       case h: HasPosition if h.pos.isDefined => Map(
         "row" -> h.pos.get.line,
         "col" -> h.pos.get.col,
         "endRow" -> h.pos.get.endLine,
-        "text" -> "?"
+        "text" -> h.toString // todo leave empty - only use for debug, too slow if not empty
       )
     }.toList
 
@@ -527,7 +536,7 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
         }.getOrElse("?")
 
         // todo save engine ea on creation and use to extractfinalvalue
-        val payload = Try {
+        val payload = if(compileOnly) "?" else Try {
           val payload = engine.ctx.getp(Diesel.PAYLOAD).filter(_.ttype != WTypes.wt.UNDEFINED)
           val res = payload
                   .orElse(engine.extractFinalValue("", true))
