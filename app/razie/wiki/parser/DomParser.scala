@@ -252,7 +252,7 @@ trait DomParser extends ParserBase with ExprParser {
         ows ~ "}" ^^ {
 
       case arrow ~ _ ~ gens => {
-        EMapCls("do", "this (level="+level+")", Nil, "=>", None, level)
+        EMapCls("do", "this", Nil, "=>", None, level)
             .withPosition(EPos("", arrow.pos.line, arrow.pos.column)) ::
             gens
       }
@@ -612,8 +612,8 @@ trait DomParser extends ParserBase with ExprParser {
   def passoc: PS =
     keyw("""[.$]assoc""".r) ~ ws ~ opt(ident <~ ws) ~ assRole ~ " *-> *".r ~ assRole ~ optAttrs ^^ {
       case k ~ _ ~ n ~ Tuple2(a, arole) ~ _ ~ Tuple2(z, zrole) ~ p => {
-        val c = A(n.mkString, a, z, arole, zrole, p)
         lazystatic(k) { (current, ctx) =>
+          val c = A(n.mkString, a, z, arole, zrole, p).withPos(pos(k, ctx))
           collectDom(c, ctx.we)
           StrAstNode(
             """<span class="label label-default">""" +
@@ -917,6 +917,8 @@ trait DomParser extends ParserBase with ExprParser {
     case k => {
       lazystatic(k) { (current, ctx) =>
         val f = EInfo(k.s)
+        // todo why not do this here? it's done in EnginePrep
+//        val f = EMsg("diesel", "heading", List(P("msg", k.s)))
         collectDom(f, ctx.we)
         StrAstNode(k.s)
       }

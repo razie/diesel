@@ -546,7 +546,7 @@ object EnginePrep extends Logging {
         }
 
         case e: EInfo if (e.msg.startsWith("##")) => {
-          addMsg(EMsg("diesel", "heading", List(P("msg", e.msg))))
+          addMsg(EMsg("diesel", "heading", List(P("msg", e.msg), P("background", "").withValue(""))))
         }
 
         // these don't wait - they don't run, they are collected together

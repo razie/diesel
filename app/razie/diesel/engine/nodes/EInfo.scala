@@ -138,37 +138,24 @@ case class ELink(msg: String, url: String = "") extends EInfoPos {
 }
 
 /** a simple info node with a message and details - details are displayed as a popup */
-case class ETrace(msg: String, details: String = "") extends EInfoPos {
-  razie.Log.trace(Enc.unescapeHtml(msg))
-
-  override def toHtml = {
-    val spos = if (pos.isDefined) kspan("pos") else ""
-    if (details.length > 0) {
-      spanClick(
-        "info::",
-        "info",
-        details,
-        spos + msg.replace("\n", "")
-      )
-    } else {
-      span("info::", "info", details) + spos + " " + msg
-    }
-  }
-
-  override def toString = "info::" + shorten(msg, 200)
+case class ETrace(override val msg: String, override val details: String = "") extends EInfoBase (msg, details, k = "info") {
+//  razie.Log.trace(Enc.unescapeHtml(msg))
 }
 
 /** a simple info node with a message and details - details are displayed as a popup */
-case class EInfo(msg: String, details: String = "") extends EInfoPos {
+case class EInfo(override val msg: String, override val details: String = "") extends EInfoBase (msg, details, "default") {
+//  razie.Log.log(Enc.unescapeHtml(msg).take(3000))
+}
 
-  razie.Log.log(Enc.unescapeHtml(msg).take(3000))
+/** a simple info node with a message and details - details are displayed as a popup */
+class EInfoBase(val msg: String, val details: String = "", val k:String = "default") extends EInfoPos {
 
   override def toHtml = {
     val spos = if (pos.isDefined) kspan("pos") else ""
     if (details.length > 0) {
       spanClick(
         "info::",
-        "default",
+        k,
         details,
         spos + msg.replace("\n", ""),
         color = "darkgray"
@@ -180,6 +167,7 @@ case class EInfo(msg: String, details: String = "") extends EInfoPos {
 
   override def toString = "info::" + shorten(msg, 200)
 }
+
 
 /** a simple wrapper */
 case class EInfoWrapper(a:Any) extends CanHtml with HasPosition with InfoNode {

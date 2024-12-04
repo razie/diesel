@@ -178,7 +178,7 @@ case class EMsg(
   // todo the null
   def hasExecutor: Boolean = Executors.withAll(_.exists(t => t._2.test(null, this)(ECtx.empty)))
 
-  val ea:String = entity + "." + met
+  val ea:String = (entity + "." + met).trim
 
   def isResolved:Boolean =
     if(spec.filter(x=> !x.equals(this)).exists(_.isResolved)) true
@@ -225,7 +225,10 @@ case class EMsg(
       val pad=80
       val p2 = (pad - m.length)/2
       val mm = if (p2 <= 0) m else "".view.padTo(p2, "&nbsp;").mkString + m + "".view.padTo(p2, "&nbsp;").mkString
-      span("<br>"+mm+"<br>", "primary", "", "style=\"color:yellow;font-size:1em\"")
+      val bkg = this.attrs.find(p=>p.name == "background" && p.value.exists(_.asString.length > 0)).map (p=>
+        "background-color:" + p.value.get.asString
+      ).getOrElse ("")
+      span("<br>"+mm+"<br>", "primary", "", "style=\"color:yellow;font-size:1em;" + bkg + "\"")
     } else if (DieselMsg.ENGINE.DIESEL_STEP == ea) {
       // step is just one comment
       /*span(arch+"::")+*/ first(pos, kind) + eaHtml(kind, "primary") + " " + span(m, "primary")

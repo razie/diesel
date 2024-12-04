@@ -281,10 +281,11 @@ require(['jquery'], function($){
 
             <ul class="dropdown-menu scrollable-menu " role="menu" style="height: 80vh; max-height: 80vh">
 @*            <ul class="dropdown-menu" role="menu">*@
-              <li><a href="/wikie/switchRealm/wiki">wiki</a></li>
-              <li><a href="/wikie/switchRealm/specs">specs</a></li>
-
-              <li class="divider"></li>
+              @if(stok.au.exists(_.memberReactors.contains("specs"))) {
+                <li><a href="/wikie/switchRealm/wiki">wiki</a></li>
+                <li><a href="/wikie/switchRealm/specs">specs</a></li>
+                <li class="divider"></li>
+              }
 
               @**
               @defining(myReactorsWithOrg().filter(_._1 != "").groupBy(_._1)) { groups =>

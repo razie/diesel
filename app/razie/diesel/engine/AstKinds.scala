@@ -12,6 +12,7 @@ object AstKinds {
   final val RECEIVED = "received"  // received from a story or elsewhere
   final val SAMPLED = "sampled"
 
+  final val WARNING = "warning"        // an error
   final val ERROR = "error"        // an error
   final val DEBUG = "debug"        // debug level info
   final val TRACE = "trace"        // trace level info

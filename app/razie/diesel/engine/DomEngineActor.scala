@@ -337,6 +337,7 @@ class DomEngineActor(eng: DomEngine) extends Actor with Stash {
       val dur = Duration.create(d, TimeUnit.MILLISECONDS)
 
       if (eng.id == id) {
+        clog << s"Engine $id - scheduleOnce: $m"
         DieselAppContext.getActorSystem.scheduler.scheduleOnce(
           dur,
           this.self,

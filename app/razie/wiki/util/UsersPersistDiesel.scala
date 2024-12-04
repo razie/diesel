@@ -58,7 +58,7 @@ class UsersPersistDiesel extends model.UsersPersist {
   /** msg returns array of json take first as option */
   def resolve(m: EMsg): P = {
     val res = DomEngineUtils
-        .runMsgSync(new DieselMsg(m, dfltTarget), 10)
+        .runMsgSync(new DieselMsg(m, dfltTarget), 10)._2
         .getOrElse(P.undefined(Diesel.PAYLOAD))
     res
   }

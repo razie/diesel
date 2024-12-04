@@ -71,11 +71,11 @@ a JS with HTML and CSS fiddle
   position:absolute;
 }
       .ace-primaryline {
-        background-color: darkblue;
+        background-color: #a73e25db;
         position:absolute;
       }
 .ace-twilight .ace_marker-layer .ace_selection {
-  background: rgba(243, 211, 10, 0.86);
+  background: #a73e25db;
 }
 
 .ace-twilight .ace_comment {
@@ -595,7 +595,7 @@ var runpill = function(id) {
       }
 
       // also trigger inst update
-      var compileOnly = typeof showingNavigatedEngine === 'undefined' ? false : showingNavigatedEngine;
+      var compileOnly = typeof showingNavigatedEngine === 'undefined' ? true : showingNavigatedEngine;
       runpill2('@{id}', compileOnly);
     },
 

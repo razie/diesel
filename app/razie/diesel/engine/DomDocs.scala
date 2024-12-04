@@ -537,7 +537,7 @@ object DomDocs extends Logging {
       var idx=p.get.line-1 // definition itself
       val buf = new ListBuffer[String]()
       var collecting = false
-      while (idx >= 0) {
+      while (idx >= 0 && idx < lines.size) {
         val line = lines(idx)
         idx = idx -1
         if(collecting) {

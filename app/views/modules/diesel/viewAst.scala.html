@@ -119,7 +119,8 @@ view an engine
 @eng.map{ e=>
   @if(!DomState.isDone(e.status)) {
     In progress... <span class="label label-primary">@e.progress</span>
-    <span class="label label-danger">
+    <span class="label label-default">
+      <img src="https://cdn.razie.com/Public/spinner.gif" height="20" width="20">
      <span
        id="cancel"
      class="glyphicon glyphicon-remove"
@@ -202,6 +203,17 @@ Started at: @{e.createdDtm}
 @Html(e.root.toHtmlInPage)
 </pre>
 
+<script>
+  withJquery(function($){
+    if($("[kind='error']").length) {
+      $("#ferrStory").removeClass("btn-default");
+      $("#ferrStory").addClass("btn-warning");
+    } else {
+      $("#ferrStory").removeClass("btn-warning");
+      $("#ferrStory").addClass("btn-default");
+    }
+  })
+</script>
 }.getOrElse {
   Engine not found...
 }
