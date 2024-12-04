@@ -204,8 +204,9 @@ request</a> and we'll take care of it! Thanks!
       log("UNAUTHORIZED BY %s - Info: %s PATH: %s HEADERS: %s".format((xauth.map(_.userName).getOrElse("")), more + " " + errCollector.mkString, request.path, request.headers))
 
     val details = s"""
-
+<span style="color:red">
 ${errCollector.mkString}
+</span>
 <br><br>
 """
 
@@ -418,18 +419,24 @@ ${errCollector.mkString}
   /** for active user */
   def FAUR(msg:String, isApi:Boolean=false)(f: RazRequest => Option[Result]) : Action[AnyContent] = Action { implicit request =>
     val req = razRequest
+    var isAuth = true
     (for (
       au <- req.au.filter(x => x.isInRealm(req.realm) || deemedMemberOfRealm(x, req.realm))
     ) yield {
         if(msg.nonEmpty) cdebug << "START_FAU "+msg
         val temp = f(req)
+        if(temp.isEmpty) isAuth = false
         req.txn.commit
         temp
     }
     ).flatten getOrElse {
-      val more = Website(request).flatMap(_.prop("msg.noPerm")).flatMap(WID.fromPath).flatMap(_.content).mkString
+      val more =
+        if(isAuth) Website(request).flatMap(_.prop("msg.noPerm")).flatMap(WID.fromPath).flatMap(_.content).getOrElse("No permission - you have to login!")
+        else "No result!"
+
       if(isApi)
-        Unauthorized(s"OOPS $more [$msg]" + req.errCollector.mkString)
+        if(isAuth) Unauthorized(s"OOPS $more [$msg]" + req.errCollector.mkString)
+        else NotFound(s"OOPS $more [$msg]" + req.errCollector.mkString)
       else
         unauthorized(s"OOPS $more [$msg]", !isFromRobot)(request, req.errCollector)
     }

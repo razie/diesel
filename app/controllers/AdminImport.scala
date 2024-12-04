@@ -222,19 +222,18 @@ class AdminImport extends AdminBase with Logging {
 
   /** actual import implementation */
   private def importDbUser(implicit stok: RazRequest) : User = {
-
-    clog << "ADMIN_IMPORT_DB_IMPL"
-
     val source = stok.fqhParm("source").get
     val email = stok.au.map(_.emailDec).orElse(stok.fqhParm("email")).get
     val pwd = stok.au.map(_.pwd.dec).orElse(stok.fqhParm("pwd")).get
+
+    clog << "ADMIN_IMPORT_DB_IMPL user: " + email
 
     // temp key used to encrypt/decrypt transfer
     val key = System.currentTimeMillis().toString + "87654321"
 
     // user already local or import from remote?
     val au = if (stok.au.isEmpty) {
-      clog << "ADMIN_IMPORT_DB_IMPL import user"
+      clog << "ADMIN_IMPORT_DB_IMPL import user: " + email
 
       // first get the user and profile and create them locally
       val u = body(url(s"http://$source/dmin-getu/$key", method = "GET").basic("H-" + email, "H-" + pwd))
@@ -248,6 +247,7 @@ class AdminImport extends AdminBase with Logging {
       au.create(pu.p)
       au
     } else {
+      clog << "ADMIN_IMPORT_DB_IMPL - user already exists: " + email
       stok.au.get
     }
 
@@ -348,7 +348,22 @@ class AdminImport extends AdminBase with Logging {
     }
   }
 
-  /** import remote db - called from curl, prints nice */
+  /** import remote user - called from curl, prints nice */
+  def importUserLocal = Action { implicit request =>
+    clog << "ADMIN_IMPORT_USER LOCAL"
+
+    val stok = new RazRequest(request)
+    val au = importDbUser(stok)
+    Ok("ok").as("application/text")
+  }
+
+  /** import remote db - called from curl, prints nice
+    * curl -i -H "Content-Type: application/x-www-form-urlencoded" 'http://localhost:9000/spec/importDbLocal' \
+    * -X POST \
+    * -d "source=${DIESEL_URL}&folder=${WORKINGDIR}&realm=blinq&email=${DIESEL_USER}&pwd=${DIESEL_PASS}&restart=no"
+    *
+    * @return
+    */
   def importDbLocal = Action.async { implicit request =>
     clog << "ADMIN_IMPORT_DB LOCAL"
 
