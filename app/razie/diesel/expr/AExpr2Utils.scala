@@ -229,18 +229,22 @@ object AExpr2Utils {
 
   /** map a single element */
   def mapOne (b: Expr, x: Any, elementType:Option[String])(implicit ctx: ECtx) = {
+    val theX = P.fromTypedValue("x", x).withSchema(elementType)
 
+    // list map x => lambda(x)
     val res = if (b.isInstanceOf[LambdaFuncExpr]) {
-      val res = b.applyTyped(P.fromTypedValue("x", x).withSchema(elementType)) // todo optimize - making two P's
+      val res = b.applyTyped(theX) // todo optimize - making two P's
       res
     } else if (b.isInstanceOf[BlockExpr] && b.asInstanceOf[BlockExpr].ex.isInstanceOf[LambdaFuncExpr]) {
+      // list map (x => lambda(x))
       // common case, no need to go through context, Block passes through to Lambda
-      val res = b.applyTyped(P.fromTypedValue("x", x).withSchema(elementType)) // todo optimize - making two P's
+      val res = b.applyTyped(theX) // todo optimize - making two P's
 //                val res = b.applyTyped(x)
       res
     } else {
+      // simple expression, not lambda
       // todo we populate an "x" or should it be "elem" ?
-      val sctx = new StaticECtx(List(P.fromTypedValue("x", x).withSchema(elementType)), Some(ctx))
+      val sctx = new StaticECtx(List(theX), Some(ctx))
       val res = b.applyTyped(x)(sctx)
       res
     }

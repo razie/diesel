@@ -126,6 +126,8 @@ case class DieselMsg(
   osettings:Option[DomEngineSettings] = None
 ) {
 
+  def withSettings (set:DomEngineSettings) = this.copy(osettings = Some(set))
+
   def this(m: EMsg, target: DieselTarget) = this(
     m.entity,
     m.met,
@@ -249,7 +251,8 @@ object DieselMsg {
     final val DIESEL_AFTER = "diesel.after"
     final val DIESEL_LEVELS = "diesel.levels"
 
-    final val DIESEL_RUNSTORY = "diesel.story.run"
+    final val DIESEL_STORY_RUN = "diesel.story.run"
+    final val DIESEL_STORY_EXPECT = "diesel.story.expect"
 
     final val DIESEL_RETURN = "diesel.return" // todo obsolete
     final val DIESEL_FLOW_RETURN = "diesel.flow.return"

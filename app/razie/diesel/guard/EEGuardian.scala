@@ -172,6 +172,7 @@ class EEGuardian extends EExecutor(DieselMsg.GUARDIAN.ENTITY) with Logging {
 
         val env = ctx.getRequired("env")
         val realm = ctx.getRequired("realm") // altho you can only run your for now
+        val theStory = ctx.get("storyWpath") // if we want just one story
         val settings = ctx.root.settings
 
         val qparms = in.attrs.filter(p=>p.name != "env" && "realm" != p.name).map(p=>(p.name, p.currentStringValue)).toMap
@@ -195,6 +196,12 @@ class EEGuardian extends EExecutor(DieselMsg.GUARDIAN.ENTITY) with Logging {
           )
 
         res appendAll res1
+        res += EVal(
+          P(
+            "engine",
+            e.map(_.id).mkString,
+            WTypes.wt.HTML
+          ))
         res += EVal(
           P(
             Diesel.PAYLOAD,

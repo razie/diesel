@@ -6,6 +6,8 @@
  **/
 package razie.tconf.parser
 
+import razie.diesel.dom.RDOM.P
+import razie.diesel.expr.{ECtx, SimpleECtx}
 import razie.tconf.{DSpec, DUser}
 
 /** user-agnostic folding context base class - contains the page being parsed
@@ -33,6 +35,14 @@ abstract class StaticFoldingContext[+T <: DSpec] {
   /** is this cacheable as parsed or not? */
   def cacheable: Boolean = we.map(_.cacheable).getOrElse(false)
   def cacheable_=(v: Boolean) = we.foreach(_.cacheable = v)
+
+  // for evaluating expressions and temporary values
+  lazy val ectx:ECtx = new SimpleECtx(we.toList.flatMap(we=>List(
+    P.fromSmartTypedValue("tags", we.tags),
+    P.fromSmartTypedValue("name", we.specRef.key),
+    P.fromSmartTypedValue("cat", we.specRef.category),
+    P.fromSmartTypedValue("wpath", we.specRef.wpath)
+  )))
 }
 
 /** folding context for user-aware ops
@@ -43,6 +53,7 @@ abstract class StaticFoldingContext[+T <: DSpec] {
 abstract class FoldingContext[+T <: DSpec, +U <: DUser] extends StaticFoldingContext [T] {
   /** user, if any, for which this is parsed */
   def au: Option[U]
+
 }
 
 /** folding context using a map for the properties available to evaluate expressions */

@@ -13,7 +13,9 @@ import controllers.{VErrors, Validation}
 import razie.audit.Audit
 import razie.db.RazSalatContext._
 import razie.db.{RMany, RazMongo}
+import razie.diesel.dom.RDOM.P
 import razie.diesel.dom.WikiDomain
+import razie.diesel.expr.{SimpleECtx, SimpleExprParser}
 import razie.hosting.WikiReactors
 import razie.tconf.Visibility.PUBLIC
 import razie.tconf.parser.{BaseAstNode, JMapFoldingContext, LeafAstNode, SpecParserSettings, StrAstNode}
@@ -197,7 +199,7 @@ object Wikis extends Logging with Validation {
 
   /** these are the safe url characters. I also included ',which are confusing many sites */
   val SAFECHARS =
-    """[^0-9a-zA-Z\$\-_()',]""" // DO NOT TOUCH THIS PATTERN!
+    """[^0-9a-zA-Z\$\-_()',.]""" // DO NOT TOUCH THIS PATTERN!
 
   def formatName(name: String): String = iformatName(name, SAFECHARS, "") // DO NOT TOUCH THIS PATTERN!
 
@@ -229,9 +231,12 @@ object Wikis extends Logging with Validation {
     val r = wid.realm.getOrElse(curRealm)
     // all pages wihtout realm are assumed in current realm
 
-    val bigName = Wikis.apply(r).index.getForLower(name.toLowerCase())
+    val wiki = Wikis(r)
+    val bigName = wiki.index.getForLower(name.toLowerCase())
+
     if (bigName.isDefined || wid.cat.matches("User")) {
-      var newwid = Wikis.apply(r).index.getWids(bigName.get).headOption.map(_.copy(section = wid.section)) getOrElse wid.copy(name = bigName.get)
+      // todo why am i doing this??
+      var newwid = wiki.index.getWids(bigName.get).filter(_.cat == wid.cat).headOption.map(_.copy(section = wid.section)) getOrElse wid.copy(name = bigName.get)
       var u = newwid.formatted.urlRelative(curRealm)
 
       if (rk && (u startsWith "/")) u = "http://" + Services.config.home + u
@@ -246,7 +251,11 @@ object Wikis extends Logging with Validation {
       // topic not found in index - hide it from google
       //      val prefix = if (wid.realm.isDefined && wid.getRealm != curRealm) s"/we/${wid.getRealm}" else "/wikie"
       val prefix = "/wikie"
-      val plusplus = if (Wikis.PERSISTED.contains(wid.cat)) "" else """<sup><b style="color:red">++</b></sup>"""
+      val plusplus = if (
+        Wikis.PERSISTED.contains(wid.cat) ||
+        "Category" == wid.cat &&
+        wiki.domain.containsCat(wid.name)) "" else """<sup><b style="color:red">++</b></sup>"""
+
       (
         s"""<a href="$prefix/show/${wid.wpath}" title="%s">$tlabel$plusplus</a>""".format
         (hover.getOrElse("Missing page")),
@@ -303,7 +312,7 @@ object Wikis extends Logging with Validation {
           hadTemplate = true
           //todo this is parse-ahead, maybe i can make it lazy?
           val parms = WikiForm.parseFormData(c2)
-          val content = template(m.group(1), Map() ++ parms)
+          val content = templateDouble(m.group(1), Map() ++ parms)
           // IF YOUR content changes - review this escape here
           //regexp uses $ as a substitution
           content
@@ -317,7 +326,7 @@ object Wikis extends Logging with Validation {
           WikiDomain(wid.getRealm).prop(wid.cat, "inst.template").map { t =>
             done = true
             val parms = WikiForm.parseFormData(c2)
-            val content = template(t, Map() ++ parms)
+            val content = templateDouble(t, Map() ++ parms)
 
             res1 = content + "\n\n" + res1
           }
@@ -362,7 +371,7 @@ object Wikis extends Logging with Validation {
     */
   def preprocess(wid: WID, markup: String, content: String, page: Option[WikiEntry]) : (BaseAstNode, String) = {
     implicit val errCollector = new VErrors()
-    
+
     def includes (c:String) = {
       var c2 = c
 
@@ -532,13 +541,14 @@ object Wikis extends Logging with Validation {
       }
 
       // cannot have these expanded in the  AST parser because then i recurse forever when resolving XPATHs...
-      val XP_PAT = """`\{\{\{(xp[l]*):([^}]*)\}\}\}`""".r
+      val XP_PAT = """`\{\{\{(xpl?)[: ]+(.*(?=}}))\}\}\}`""".r
 
       content = XP_PAT replaceSomeIn (content, { m =>
         we.map(_.cacheable = false)
         try {
-          we.map(x => runXp(m group 1, x, m group 2))
-        } catch { case _: Throwable => Some("!?!") }
+          val s = (m group 2) split """\|>"""
+          we.map(x => runXp(m group 1, x, s(0).trim, (if(s.length > 1) s(1).trim else "")))
+        } catch { case t: Throwable => Some(s"""<span title=${t.toString}"">!?!</span>""") }
       })
 
       // for forms
@@ -634,20 +644,34 @@ object Wikis extends Logging with Validation {
   }
 
   /** a list to html */
-  def toUl (res:List[Any]) =
+  def toUl (res:List[Any], w:Option[WikiEntry], xmap:String) = {
+    var f : String => String = identity
+
+   if(w.isDefined && xmap.trim.length > 0) {
+    val expr = if(xmap.trim.length > 0) new SimpleExprParser().parseExpr(xmap) else None
+    implicit val ctx = new SimpleECtx(List(
+      P.fromSmartTypedValue("name", w.get.name),
+      P.fromSmartTypedValue("cat", w.get.cat),
+      P.fromSmartTypedValue("wpath", w.get.wid.wpath)
+    ))
+
+     f = x=>expr.map (ex=> ex.applyTyped(x).calculatedValue).getOrElse(x)
+   }
+
     "<ul>" +
       res.take(100).map { x: Any =>
-        "<li>" + x.toString + "</li>"
+        "<li>" + f(x.toString) + "</li>"
       }.mkString +
-      (if(res.size>100)"<li>...</li>" else "") +
+      (if (res.size > 100) "<li>...</li>" else "") +
       "</ul>"
+  }
 
-  def runXp(what: String, w: WikiEntry, path: String) = {
+  def runXp(what: String, w: WikiEntry, path: String, xmap:String) = {
     val res = irunXp(what, w, path)
 
     what match {
       case "xp" => res.headOption.getOrElse("?").toString
-      case "xpl" => toUl(res)
+      case "xpl" => toUl(res, Some(w), xmap:String)
 //      case "xmap" => res.take(100).map { x: Any => "<li>" + x.toString + "</li>" }.mkString
     }
     //        else "TOO MANY to list"), None))
@@ -815,15 +839,17 @@ object Wikis extends Logging with Validation {
 
   /** format content from a template, given some parms
     *
+    * a template uses ${{XXX}}
+    *
     * - this is used only when creating new pages from spec
     *
     * DO NOT mess with this - one side effect is only replacing the ${} it understands...
     *
     * CANNOT should reconcile with templateFromContent
     */
-  def template(wpath: String, parms:Map[String,String]) = {
+  def templateDouble(wpath: String, parms:Map[String,String]) = {
     (for (
-      wid <- WID.fromPath(wpath).map(x=>if(x.realm.isDefined) x else x.r("wiki")); // templates are in wiki or rk
+      wid <- WID.fromPath(wpath).map(_.defaultRealmTo("wiki")); // templates are in wiki or rk
       c <- wid.content
     ) yield {
         var extraParms = Map.empty[String,String]
@@ -846,15 +872,28 @@ object Wikis extends Logging with Validation {
   }
 
   /** format content from a template, given some parms
-  *
-  * @param parms will resolve expressions from the template into Strings. you can use a Map.
-  *              parms("*") should return some details for debugging
-  */
-  def templateFromContent(content: String, parms:String=>String) = {
-    val PAT = """\\$\\{([^\\}]*)\\}""".r
-    val s1 = PAT.replaceAllIn(content, {m =>
-      parms(m.group(1))
-    })
+    *
+    * simple templates uses ${{XXX}}
+    *
+    * - this is used only when creating new pages from spec
+    *
+    * DO NOT mess with this - one side effect is only replacing the ${} it understands...
+    *
+    * CANNOT should reconcile with templateFromContent
+    *
+    * @param prefix is "this." for instance or ""
+    */
+  def templateSimple (content: String, prefix:String, parms:scala.collection.Map[String,Any]) = {
+      val PAT = ("""\$\{""" + prefix + """([^}]+)\}""").r
+      PAT replaceSomeIn (content, { m =>
+        val name = m.group(1)
+        if (name == "*") Some(parms.mkString(" | "))
+        else if (parms.contains(name)) Some {
+          val v = parms(name).toString.trim
+          if (v.length > 0) v else s"{$prefix$name}"
+        }
+        else Some(s"{$prefix$name}")
+      })
   }
 
   def noBadWords(s: String) = badWords.foldLeft(s)((x, y) => x.replaceAll("""\b%s\b""".format(y), "BLIP"))

@@ -39,7 +39,13 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
 
     def isDate(p: P): Boolean = p.calculatedTypedValue.cType.name == WTypes.DATE
 
-    def isBool(p: P): Boolean = p.calculatedTypedValue.cType.name == WTypes.BOOLEAN
+    def isBool(p: P): Boolean = {
+      val x = p.calculatedTypedValue
+      x.cType.name == WTypes.BOOLEAN || {
+        val y = x.value.toString.toLowerCase.trim
+        y == "true" || y == "false" || y == "yes" || y == "no"
+      }
+    }
 
     val av = a.applyTyped(v)
 
@@ -354,7 +360,7 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
             }.calculatedTypedValue
 
             case _ if bs == "boolean" || bs == "bool" =>
-              P.fromTypedValue("", as, WTypes.wt.BOOLEAN).calculatedTypedValue
+              P.fromTypedValue("", as.trim.toLowerCase, WTypes.wt.BOOLEAN).calculatedTypedValue
 
             case _ if bs == "number" =>
               P.fromTypedValue("", as, WTypes.wt.NUMBER).calculatedTypedValue
@@ -423,14 +429,14 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
 
             case _ if !lastTime => {
               val bp = b.applyTyped(v)
-              doAsWith(bp.currentValue, bp.currentStringValue, b.toString.toLowerCase, true)
+              doAsWith(bp.currentValue, bp.currentStringValue, b.toString.toLowerCase, lastTime = true)
             }
 
             case _ if lastTime => throw new DieselExprException("'as' can't typecast to: " + b.toString + " from: " + av + " in expr: " + this.toDsl)
           }
         }
 
-        doAsWith(b, b.toString, b.toString.toLowerCase, false)
+        doAsWith(b, b.toString, b.toString.toLowerCase, lastTime = false)
       }
 
       case "take" => {
@@ -549,6 +555,15 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
 
 
       // concatenate paths - make sure there is just one /
+      case "split" => {
+
+        val as = av.calculatedValue
+        val bs = b.applyTyped("").currentStringValue
+
+        PValue(as.split(bs).toSeq, WTypes.wt.ARRAY)
+      }
+
+      // concatenate paths - make sure there is just one /
       case "catPath" => {
 
         val as = av.calculatedTypedValue.asString
@@ -560,7 +575,7 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
         PValue(ass + bss, WTypes.wt.STRING)
       }
 
-      case "mkString" => {
+      case "mkString" => { // arr mkString "sep"
 
         av.calculatedTypedValue.cType.name match {
 

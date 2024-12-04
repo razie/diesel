@@ -391,7 +391,11 @@ object WID {
         case REGEX(c, n, s) => {
           val cat =
             if (c == null) ""
-            else c.replaceFirst("[^.]+\\.", "").replaceFirst(":", "")
+            else {
+              // todo here we need to now unpack the first before . and see if it's a known realm-
+              // otherwise it's a class path a.b.class from domain
+              c.replaceFirst("[^.]+\\.", "").replaceFirst(":", "")
+            }
           val name =
             if (n == null) ""
             else if (cat.length <= 0) n.replaceFirst("[^.]+\\.", "")
