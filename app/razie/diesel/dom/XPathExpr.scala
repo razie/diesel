@@ -45,7 +45,7 @@ case class XPathIdent (val prefix:String, override val expr: String) extends Exp
       val c = rdom.flatMap(_.classes.get(cat)).orElse(dom.rdom.classes.get(cat))
 
       ctx.curNode.foreach {_.appendVerbose(
-        ETrace(s"Domain found: [${c.map(_.name)}] isWikiCat:${dom.isWikiCategory(cat)}")
+        ETrace(s"Domain found: [${c.map(_.name)}] isWikiCat:${dom.isWikiCategory(cat)} inv:${c.flatMap(x=>DomInventories.getPluginForClass(realm, x).map(_.name))}")
       )}
 
       // known class but not wikicat
@@ -220,6 +220,9 @@ class DOMXpSolver (ctx: ECtx) extends XpSolver[DASWrapper] {
 
   val debug = true
 
+  val realm = ctx.root.settings.realm.mkString
+  val dom = WikiDomain(realm)
+
   /** don't look them up yet - just return a continuation */
   override def children(root: T, xe:Option[XpElement]): (T, U) = (root, {
     case (tag, assoc, xe2) if root.isInstanceOf[DASWrapper] =>
@@ -241,15 +244,20 @@ class DOMXpSolver (ctx: ECtx) extends XpSolver[DASWrapper] {
     if(debug) println("---CHILDREN2 ("+node+") ("+tag+")")
 
     val cat = node.p.ttype.getClassName
-    val realm = ctx.root.settings.realm.mkString
-    val dom = WikiDomain(realm)
     val c = dom.rdom.classes.get(cat)
     val ass = Option(assoc).mkString.trim // may be null because I am an ass
+
+//    val domAssocs = dom.rdom.assocsWhereIHaveRole(cat, )
+
+    val afromtag = dom.rdom.assocs.filter(t => t.z == cat && t.a == tag)
+    val atotag = dom.rdom.assocs.filter(t => t.a == cat && t.z == tag)
 
     if (c.isEmpty) throw new DieselExprException(s"Class $cat is not found in domain - define it with `$$class $cat`!")
 
     // todo resolve conditions here with query
     val cond = xe.flatMap(x=> Option(x.cond))
+
+//    val a2 = dom.rdom.assocsWhereIHaveRole()
 
     // we're looking down to a ref? Are there assocs to target? Or user forced lookup?
     val list = if(c.get.parms.exists(_.ttype.getClassName == tag) && ass != "domLookup") {
@@ -263,7 +271,7 @@ class DOMXpSolver (ctx: ECtx) extends XpSolver[DASWrapper] {
         // <> that's all that's accepted here
         // if it's a list, then this should loop through an array of references
         val ref = SpecRef.make(realm, "", "", tag, v)
-        val res = DomInventories.findByRef(ref)
+        val res = DomInventories.findByRef(ref)(ctx)
         val list = res.map(_.asP).map(x => new T(x))
 
         //    val res = DomInventories.findByQuery(ref, Left(tag + "/" + a + "/" + v), 0, 100, Array.empty[String])
@@ -283,16 +291,77 @@ class DOMXpSolver (ctx: ECtx) extends XpSolver[DASWrapper] {
       val a = if (ass == "") otherCat.get.parms.find(_.ttype.getClassName == cat).map(_.name).mkString else assoc
 
       val ref = SpecRef.make(realm, "", "", tag, "")
-//      val res = DomInventories.findByQuery(ref, Left(tag + "/" + a + "/" + v), 0, 100, Array.empty[String])
+      //      val res = DomInventories.findByQuery(ref, Left(tag + "/" + a + "/" + v), 0, 100, Array.empty[String])
       // todo add cond as map to the query, no?
       val cq = if(xe.isDefined && xe.get.cond != null) xe.get.cond.asMap(this) else Map.empty
       val query = Map(a -> kvalue) ++ cq
-      val res = DomInventories.findByQuery(ref, Right(query), 0, 100, Array.empty[String])
+      val res = DomInventories.findByQuery(ref, Right(query), 0, 100, Array.empty[String])(ctx)
       val list = res.data.map(_.asP).map(x=> new T(x))
 
       list.toList
     }
-    list
+
+    val otherCat = dom.rdom.classes.get(tag)
+    if (otherCat.isEmpty) throw new DieselExprException(s"Class $otherCat is not found in domain - define it with `$$class $otherCat`!")
+
+    // we're looking down to a ref? Are there assocs to target? Or user forced lookup?
+    val list2 = if(atotag.nonEmpty && ass != "domLookup") {
+      // use the first assoc if not specified
+      // follow all associations of type if none specified
+      val assocs = atotag.filter(x=> ass.length == 0 || x.zRole == ass)
+      assocs.flatMap {a=>
+        val kvalue = getAttr(node, a.aParm)
+
+        // todo this is wrong - what if it's a <> and/or a list?
+        // <> that's all that's accepted here
+        // if it's a list, then this should loop through an array of references
+        val list = if (a.zParm.length == 0 ) { // || c.get.parms.find(_.name == a.aParm).exists(_.)) { // default assoc to key
+          val ref = SpecRef.make(realm, "", "", tag, kvalue)
+          val res = DomInventories.findByRef(ref)(ctx)
+          res.map(_.asP).map(x => new T(x))
+            .toList
+        } else {
+          val kzparm = if (a.zParm.length > 0) a.zParm else otherCat.map(_.key).getOrElse("key")
+
+          // todo add cond as map to the query, no?
+          val ref = SpecRef.make(realm, "", "", tag, "")
+          val cq = if (xe.isDefined && xe.get.cond != null) xe.get.cond.asMap(this) else Map.empty
+          val query = Map(kzparm -> kvalue) ++ cq
+          val res = DomInventories.findByQuery(ref, Right(query), 0, 100, Array.empty[String])(ctx)
+          res.data.map(_.asP).map(x => new T(x))
+
+          //val res = DomInventories.findByQuery(ref, Left(tag + "/" + a + "/" + v), 0, 100, Array.empty[String])
+          //val list = res.data.map(_.asP).map(x=> new T(x))
+        }
+
+        list
+      }
+    } else Nil
+
+    val list2a = if(list2.isEmpty && afromtag.nonEmpty || ass == "domLookup") {
+      // we're maybe looking up - who is associated to us:
+      // use the first assoc if not specified
+      val assocs = afromtag.filter(x=> ass.length == 0 || x.aRole == ass)
+      assocs.flatMap { a =>
+        val kzparm = if (a.zParm.length > 0) a.zParm else c.map(_.key).getOrElse("key")
+        val kvalue = getAttr(node, kzparm)
+
+        val kaparm = if (a.aParm.length > 0) a.aParm else c.map(_.key).getOrElse("key")
+        //val a = if (ass == "") otherCat.get.parms.find(_.ttype.getClassName == cat).map(_.name).mkString else assoc
+
+        val ref = SpecRef.make(realm, "", "", tag, "")
+        //      val res = DomInventories.findByQuery(ref, Left(tag + "/" + a + "/" + v), 0, 100, Array.empty[String])
+        // todo add cond as map to the query, no?
+        val cq = if (xe.isDefined && xe.get.cond != null) xe.get.cond.asMap(this) else Map.empty
+        val query = Map(kaparm -> kvalue) ++ cq
+        val res = DomInventories.findByQuery(ref, Right(query), 0, 100, Array.empty[String])(ctx)
+        val list = res.data.map(_.asP).map(x => new T(x))
+
+        list.toList
+      }
+    } else Nil
+
+    list2 ::: list2a
   }
 
   // get attr from context, unrelated to an object we traversed

@@ -148,6 +148,22 @@ object RDOM {
       c
     }
 
+    /** comma-sep list of values if this is an enum
+      *
+      * enums are annotated with $anno (enum.param.kind, "a,b,c")
+      *
+      * @param name
+      * @return
+      */
+    def enumForParm (name:String) = {
+      val anno = "enum.param."+name
+      this.props.filter {x =>
+        x.name.startsWith(anno)
+      }.map { x =>
+        x.currentStringValue
+      }.mkString
+    }
+
     // todo cache this toj
     def toj = Map (
       "name" -> name,
@@ -311,7 +327,7 @@ object RDOM {
       // like an orElse - important to preserve higher types info from expected
       def expOrElse (wt:WType) = if (expectedType == WTypes.wt.UNKNOWN) wt else {
         if(expectedType.name != wt.name)
-          throw new DieselExprException(s"Expected types don't match: $expectedType vs $wt for ${name}")
+          throw new DieselExprException(s"Expected types don't match, expected: $expectedType got: $wt for ${name}")
 
         expectedType
       }
@@ -368,36 +384,45 @@ object RDOM {
           new P(name, "", WTypes.wt.XML).withCachedValue(x, WTypes.wt.XML, "")
 
         case s: String => {
-          expectedType match {
-            case WType(WTypes.JSON, _, _, _) => new P(name, "", expectedType).withCachedValue(
-              js.fromObject(new JSONObject(s)), expectedType, s)
-            case WType(WTypes.ARRAY, _, _, _) => new P(name, "", expectedType).withCachedValue(
-              js.fromArray(new JSONArray(s)), expectedType, s)
-            case WType(WTypes.BOOLEAN, _, _, _) => new P(name, "", expectedType).withCachedValue(s.toBoolean,
-              expectedType, s)
-            case WType(WTypes.NUMBER, _, _, _) => new P(name, "", expectedType).withCachedValue(s.toFloat, expectedType,
-              s)
+          try {
+            expectedType match {
+              case WType(WTypes.JSON, _, _, _) => new P(name, "", expectedType).withCachedValue(
+                js.fromObject(new JSONObject(s)), expectedType, s)
+              case WType(WTypes.ARRAY, _, _, _) => new P(name, "", expectedType).withCachedValue(
+                js.fromArray(new JSONArray(s)), expectedType, s)
+              case WType(WTypes.BOOLEAN, _, _, _) => new P(name, "", expectedType).withCachedValue(s.toBoolean,
+                expectedType, s)
+              case WType(WTypes.NUMBER, _, _, _) => new P(name, "", expectedType).withCachedValue(s.toFloat,
+                expectedType,
+                s)
 
-            case WType(WTypes.STRING, _, _, _) => new P(name, "", expectedType).withCachedValue(s, expectedType, s)
-            case WType(WTypes.DATE, _, _, _)   => new P(name, "", expectedType).withCachedValue(s, expectedType, s)
-            case WType(WTypes.HTML, _, _, _)   => new P(name, "", expectedType).withCachedValue(s, expectedType, s)
+              case WType(WTypes.STRING, _, _, _) => new P(name, "", expectedType).withCachedValue(s, expectedType, s)
+              case WType(WTypes.DATE, _, _, _) => new P(name, "", expectedType).withCachedValue(s, expectedType, s)
+              case WType(WTypes.HTML, _, _, _) => new P(name, "", expectedType).withCachedValue(s, expectedType, s)
 
-            case WType(WTypes.EXCEPTION, _, _, _) => new P(name, s, expectedType)
+              case WType(WTypes.EXCEPTION, _, _, _) => new P(name, s, expectedType)
 
-            case WType(WTypes.REF, _, _, _) => new P(name, s, expectedType)
+              case WType(WTypes.REF, _, _, _) => new P(name, s, expectedType)
 
-            case WType(WTypes.MSG, _, _, _) => new P(name, s, expectedType)
+              case WType(WTypes.MSG, _, _, _) => new P(name, s, expectedType)
 
-            case WType(WTypes.URL, _, _, _) => new P(name, s, expectedType)
+              case WType(WTypes.URL, _, _, _) => new P(name, s, expectedType)
 
-            case WType(WTypes.PASSWORD, _, _, _) => new P(name, s, expectedType)
+              case WType(WTypes.PASSWORD, _, _, _) => new P(name, s, expectedType)
 
-            case WType(_, _, _, true) => new P(name, s, expectedType) // a ref to smth else
+              case WType(_, _, _, true) => new P(name, s, expectedType) // a ref to smth else
 
-            case _ if expectedType.trim.length > 0 =>
-              throw new DieselExprException(s"$expectedType is an unknown type")
+              case _ if expectedType.trim.length > 0 =>
+                throw new DieselExprException(s"$expectedType is an unknown type")
 
-            case _ => new P(name, s, WTypes.wt.STRING).withCachedValue(s, WTypes.wt.STRING, s)
+              case _ => new P(name, s, WTypes.wt.STRING).withCachedValue(s, WTypes.wt.STRING, s)
+            }
+          } catch {
+            case t:Throwable => {
+              val msg = s"Can't parse String into $expectedType :" + s
+              razie.Log.error(msg, t)
+              throw new DieselExprException(msg).initCause(t)
+            }
           }
         }
 
@@ -1081,12 +1106,25 @@ object RDOM {
 
   /** Like UML Association, from a to z
     *
-    * name is not required
+    * @param name name is not required
+    * @param a class on a end
+    * @param z class on z end
+    * @param aRole what z calls a, wich attribute from z is part of this association - default would be the key
+    * @param zRole what a calls z, i.e. attribute a.zRole will point to a z
+    * @param parms
+    * @param ac
     */
   case class A  (name:String, a:String, z:String, aRole:String, zRole:String, parms:List[P]=Nil, override val ac:Option[AC]=None) //association
     extends D (List((a, aRole, ""), (z, zRole, "")), ac) {
     override def toString = s"assoc $name $a:$aRole -> $z:$zRole " +
       mks(parms, " (", ", ", ") ")
+
+    /** the attribute of a that references z */
+   def aParm = zRole
+
+    /** the attribute of z that references a */
+   def zParm = aRole
+
   }
 
   /** Association class */

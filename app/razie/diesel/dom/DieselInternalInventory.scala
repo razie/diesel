@@ -6,12 +6,13 @@
   */
 package razie.diesel.dom
 
+import model.Users
 import razie.diesel.cron.DieselCron
 import razie.diesel.dom.RDOM.P.asString
 import razie.diesel.dom.RDOM._
-import razie.diesel.engine.DieselAppContext
+import razie.diesel.engine.{DieselAppContext, DomEngECtx, DomEngineSettings}
 import razie.diesel.engine.nodes.EMsg
-import razie.diesel.expr.DieselExprException
+import razie.diesel.expr.{DieselExprException, ECtx}
 import razie.tconf.{DSpecInventory, FullSpecRef, SpecRef}
 import razie.wiki.Services
 import scala.collection.mutable
@@ -96,7 +97,6 @@ class DieselInternalInventory(
       )
 
       case "DieselNode" => fromList (
-
         Services.cluster.clusterNodes.map { t =>
             new DieselAsset(
               ref.copy(key=t.node),
@@ -108,8 +108,31 @@ class DieselInternalInventory(
           }.toList
         )
 
+
+      case "DieselUser" => fromList (
+
+        Users.findUsersForRealm(ref.realm).map(_.forRealm(ref.realm)).map { t =>
+          val m = Map (
+            "name" -> t.userName,
+            "firstName" -> t.firstName,
+            "lastName" -> t.lastName,
+            "email" -> t.emailDec,
+            "id" -> t.id,
+            "roles" -> t.perms.mkString(",")
+          )
+          new DieselAsset(
+            ref.copy(key=t.userName),
+            t,
+            Option(
+              new O("", ref.cls, m.map(x=>P.fromSmartTypedValue(x._1, x._2)).toList)
+            )
+          )
+        }.toList
+      )
+
       case _ => Left(DIQueryResult(0, Nil))
     }
+
   }
 
   def cancelCron (ref:FullSpecRef) = {
@@ -216,15 +239,18 @@ class DieselInternalInventory(
     * @param epath       id of the entity
     * @return
     */
-  override def doAction(dom: RDomain, conn: String, action: String, completeUri: String, epath: String): String = {
+  override def doAction(dom: RDomain, conn: String, action: String, completeUri: String, epath: String) : String = {
     try {
       val (cat, f, k) = SpecRef.parseEpath(epath)
       val ref = new FullSpecRef(this.name, conn, cat, k, "", realm)
 
+      // todo get a proper ctx from somewhere
+      val ctx = new DomEngECtx(new DomEngineSettings())
+
       action match {
 
         case "testConnection" => {
-          DomInventories.resolve(flattenData = false, ref, testConnection(dom, epath)).currentStringValue
+          DomInventories.resolve(flattenData = false, ref, testConnection(dom, epath))(ctx).currentStringValue
         }
 
         case "listAll" => {
@@ -232,7 +258,7 @@ class DieselInternalInventory(
             dom.name,
             ref,
             listAll(dom, ref, 0, 100, Array.empty[String])
-          ).data.map { da =>
+          )(ctx).data.map { da =>
             asString(da.getValueP)
           }.mkString("\n")
         }
@@ -279,6 +305,7 @@ class DieselInternalInventory(
       m => P.fromSmartTypedValue("query", m)
     )
 
+    val m = attrs.value.get.asJson
     val prefix = ref.realm + "-"
 
     ref.cls match {
@@ -321,6 +348,36 @@ class DieselInternalInventory(
           )
         ).toList
         )
+
+      case "DieselUser" => fromList (
+
+        Users.findUsersForRealm(ref.realm)
+          .filter {u=>
+            if(m.contains("name") && u.userName.matches(m("name").toString)) true
+            else if(m.contains("email") && u.emailDec.matches(m("email").toString)) true
+            else if(m.contains("firstName") && u.firstName.matches(m("firstName").toString)) true
+            else if(m.contains("lastName") && u.lastName.matches(m("lastName").toString)) true
+            else true
+          }
+          .map(_.forRealm(ref.realm))
+          .map { t =>
+          val m = Map (
+            "name" -> t.userName,
+            "firstName" -> t.firstName,
+            "lastName" -> t.lastName,
+            "email" -> t.emailDec,
+            "id" -> t.id,
+            "roles" -> t.perms.mkString(",")
+          )
+          new DieselAsset(
+            ref.copy(key=t.userName),
+            t,
+            Option(
+              new O("", ref.cls, m.map(x=>P.fromSmartTypedValue(x._1, x._2)).toList)
+            )
+          )
+        }.toList
+      )
 
       case _ => Left(DIQueryResult(0, Nil))
     }
@@ -372,6 +429,31 @@ class DieselInternalInventory(
             )
           )
         )
+      )
+
+      case "DieselUser" => Left (
+
+        // todo optimize
+        Users.findUsersForRealm(ref.realm)
+          .find {u=> u.userName == ref.key}
+          .map(_.forRealm(ref.realm))
+          .map { t =>
+            val m = Map (
+              "name" -> t.userName,
+              "firstName" -> t.firstName,
+              "lastName" -> t.lastName,
+              "email" -> t.emailDec,
+              "id" -> t.id,
+              "roles" -> t.perms.mkString(",")
+            )
+            new DieselAsset(
+              ref.copy(key=t.userName),
+              t,
+              Option(
+                new O("", ref.cls, m.map(x=>P.fromSmartTypedValue(x._1, x._2)).toList)
+              )
+            )
+          }
       )
 
 

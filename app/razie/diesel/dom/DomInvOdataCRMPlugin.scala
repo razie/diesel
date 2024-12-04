@@ -12,6 +12,7 @@ import org.json.JSONObject
 import razie.Snakk._
 import razie.diesel.Diesel
 import razie.diesel.dom.RDOM._
+import razie.diesel.engine.{DomEngECtx, DomEngineSettings}
 import razie.diesel.engine.nodes.EMsg
 import razie.diesel.expr.ECtx
 import razie.tconf.{DSpecInventory, FullSpecRef, SpecRef}
@@ -162,6 +163,9 @@ class DomInvOdataCRMPlugin(
 
       this.completeUri = completeUri
       val ref = new FullSpecRef(this.name, conn, epath, "", "", realm)
+
+      // todo get a proper ctx from somewhere
+      implicit val ctx: ECtx = new DomEngECtx(new DomEngineSettings())
 
       action match {
         case "testConnection" => DomInventories.resolve(false, ref, testConnection(dom, epath)).currentStringValue

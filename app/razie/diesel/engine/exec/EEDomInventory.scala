@@ -13,6 +13,7 @@ import razie.diesel.engine.DomAst
 import razie.diesel.engine.nodes.{EError, EMsg, EVal, EWarning, MatchCollector}
 import razie.diesel.expr.{DieselExprException, ECtx}
 import razie.tconf.FullSpecRef
+import scala.collection.mutable.HashMap
 
 /**
   * executor for inventories. This simply delegates to the implementations and resolves the outcomes
@@ -33,6 +34,8 @@ class EEDomInventory extends EExecutor("diesel.inv") {
   final val QUERY       = "diesel.inv.query"
   final val FINDBYQUERY = "diesel.inv.findByQuery"
 
+  final val INVMETA     = "diesel.inv.meta"
+
   final val SEEREG      = "diesel.inv.inspect"
   final val DEBUG       = "diesel.inv.debug"
 
@@ -47,6 +50,7 @@ class EEDomInventory extends EExecutor("diesel.inv") {
     val realm = ctx.root.engine.get.settings.realm.get
     val dom = WikiDomain(realm)
 
+    /** create a nice warning for inventory not found */
     def warnPlugin (plugin:Option[DomInventory], cls:String, conn:String) =
       if(plugin.isEmpty) List(EWarning(s"No inventory found for class: $realm.$cls - $conn | is it defined in a saved DslDomain spec?")) else Nil
 
@@ -267,6 +271,26 @@ class EEDomInventory extends EExecutor("diesel.inv") {
             EVal(P.undefined(Diesel.PAYLOAD))
           )
         }
+
+        List(res)
+      }
+
+      case INVMETA => {
+        val clsn = ctx.getRequired("className")
+        val c = dom.rdom.classes.getOrElse(clsn, new C(clsn))
+        val plugin = DomInventories.getPluginForClass (realm, c, "")
+
+        val t = c.props.find(_.name == "table").map(_.calculatedValue(ECtx.empty)).getOrElse(c.name)
+
+        val warn = warnPlugin(plugin, clsn, conn = "")
+
+        val m = new HashMap[String,String]()
+        if (plugin.isDefined) m.put("inventory", plugin.get.name)
+        else m.put("inventory", null)
+        if (plugin.isDefined) m.put("conn", plugin.get.conn)
+        else m.put("conn", null)
+
+        val res = EVal(P.fromSmartTypedValue(Diesel.PAYLOAD, m))
 
         List(res)
       }

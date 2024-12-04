@@ -245,7 +245,7 @@ case class EElasticConnector (
     } recover {
       case e:Throwable =>
         EInfo(sc.toCurl) ::
-            EESnakk.caughtSnakkException(e, Map("responseCode" -> "201"), "?", startMillis, new InfoAccumulator())
+            EESnakk.caughtSnakkException(e, Map("responseCode" -> "201"), "?", startMillis, new InfoAccumulator())(ctx)
     }
 
     r.get

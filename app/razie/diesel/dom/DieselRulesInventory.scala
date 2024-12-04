@@ -6,9 +6,10 @@
   */
 package razie.diesel.dom
 
-import razie.diesel.{dom}
+import razie.diesel.dom
 import razie.diesel.dom.RDOM.P.asString
 import razie.diesel.dom.RDOM._
+import razie.diesel.engine.{DomEngECtx, DomEngineSettings}
 import razie.diesel.engine.nodes.{EMsg, EnginePrep}
 import razie.diesel.expr.ECtx
 import razie.diesel.model.DieselTarget
@@ -282,6 +283,9 @@ class DieselRulesInventory (
     try {
       this.completeUri = completeUri
       val ref = new FullSpecRef(this.name, conn, epath, "", "", realm)
+
+      // todo get a proper ctx from somewhere
+      implicit val ctx: ECtx = new DomEngECtx(new DomEngineSettings())
 
       action match {
 

@@ -10,9 +10,9 @@ import org.json.JSONObject
 import razie.diesel.dom.RDOM.P.isArrayType
 import razie.diesel.{Diesel, dom}
 import razie.diesel.dom.RDOM._
-import razie.diesel.engine.{DomEngECtx, DomEngineSettings}
-import razie.diesel.engine.nodes.{EMsg, flattenJson}
-import razie.diesel.expr.{CExpr, DieselExprException, ECtx, StaticECtx}
+import razie.diesel.engine.{AstKinds, DomAst, DomEngECtx, DomEngineSettings, DomState, KeepOnlySomeSiblings}
+import razie.diesel.engine.nodes.{EInfo, EMsg, flattenJson}
+import razie.diesel.expr.{CExpr, DieselExprException, ECtx, SimpleECtx, StaticECtx}
 import razie.diesel.model.{DieselMsg, DieselTarget}
 import razie.diesel.samples.DomEngineUtils
 import razie.tconf.{FullSpecRef, SpecRef}
@@ -73,7 +73,7 @@ object DomInventories extends razie.Logging {
   }
 
   /** find the right plugin by realm and class */
-  def getPluginForClass(realm: String, cls: DE, conn: String): Option[DomInventory] = {
+  def getPluginForClass(realm: String, cls: DE, conn: String = ""): Option[DomInventory] = {
     val dom = WikiDomain(realm)
     var list = dom.findInventoriesForClass(cls)
     if (list.isEmpty) {
@@ -118,7 +118,7 @@ object DomInventories extends razie.Logging {
   }
 
   /** find an element by ref */
-  def findByRef(ref: FullSpecRef, collectRefs: Option[mutable.HashMap[String, String]] = None): Option[DieselAsset[_]]
+  def findByRef(ref: FullSpecRef, collectRefs: Option[mutable.HashMap[String, String]] = None)(implicit ctx: ECtx) : Option[DieselAsset[_]]
   = {
     trace(s"findByRef $ref")
     val dom = WikiDomain(ref.realm)
@@ -146,7 +146,7 @@ object DomInventories extends razie.Logging {
   def findByQuery(ref: FullSpecRef, epath: Either[String, collection.Map[String, Any]],
                   from: Long = 0, size: Long = 100, sort: Array[String],
                   countOnly: Boolean = false,
-                  collectRefs: Option[mutable.HashMap[String, String]] = None)
+                  collectRefs: Option[mutable.HashMap[String, String]] = None)(implicit ctx: ECtx)
   : DIQueryResult = {
     val dom = WikiDomain(ref.realm)
     val p = getPluginToUse(dom, ref.cls, ref.inventory, ref.conn)
@@ -175,7 +175,7 @@ object DomInventories extends razie.Logging {
               countOnly: Boolean = false,
               collectRefs: Option[mutable
               .HashMap[String, String]]
-              = None): DIQueryResult = {
+              = None)(implicit ctx: ECtx) : DIQueryResult = {
     val dom = WikiDomain(ref.realm)
     val p = getPluginToUse(dom, ref.cls, ref.inventory, ref.conn)
     val o = p.map(inv =>
@@ -217,11 +217,11 @@ object DomInventories extends razie.Logging {
           // classdef has parm defn as object - try to parse as json
           classDef.parms.find(_.name == kn).map { cp =>
             if(cp.isOfType(WTypes.wt.JSON) && jvalue.isDefined) {
-              cp.copy(value = P.fromTypedValue("", jvalue.get, cp.ttype).value)
+              cp.copy(value = P.fromTypedValue(k, jvalue.get, cp.ttype).value)
             } else if(cp.ttype.isArray && jvalue.isDefined) {
-                cp.copy(value = P.fromTypedValue("", jvalue.get, cp.ttype).value)
+                cp.copy(value = P.fromTypedValue(k, jvalue.get, cp.ttype).value)
               } else {
-                cp.copy(value = P.fromTypedValue("", jvalue.mkString).value)
+                cp.copy(value = P.fromTypedValue(k, jvalue.mkString).value)
               }
           } getOrElse {
             // classdef don't have member - see if it's json
@@ -309,18 +309,26 @@ object DomInventories extends razie.Logging {
 
   val CLS_FIELD_VALUE = SpecRef.CLS_FIELD_VALUE
 
+
+  private def runEngFork (m:EMsg, ctx:ECtx) = {
+    val ast = DomAst(m, AstKinds.RECEIVED)
+    DomEngineUtils.runMsgSyncInFork(ast, ctx, 30)
+  }
+
   /** for synchornous people */
-  def resolve(flattenData: Boolean, ref: FullSpecRef, e: Either[P, EMsg]): P = {
+  def resolve(flattenData: Boolean, ref: FullSpecRef, e: Either[P, EMsg])(implicit ctx: ECtx) : P = {
     // resolve EMrg's parameters in an empty context and run it and await?
     e.fold(
       p => p,
-      m => DomEngineUtils.runMsgSync(new DieselMsg(m, DieselTarget.ENV("n/a")), 30)
-          .getOrElse(P.undefined(Diesel.PAYLOAD))
+//      m => DomEngineUtils.runMsgSync(new DieselMsg(m, DieselTarget.ENV("n/a")).withSettings(ctx.root.settings), 30)
+      m => runEngFork(m, ctx)
+        ._2
+        .getOrElse(P.undefined(Diesel.PAYLOAD))
     )
   }
 
   // resolve for messages that return an option not a list - reuse the list one
-  def resolve(flattenData: Boolean, realm: String, ref: FullSpecRef, e: Either[Option[DieselAsset[_]], EMsg])
+  def resolve(flattenData: Boolean, realm: String, ref: FullSpecRef, e: Either[Option[DieselAsset[_]], EMsg]) (implicit ctx: ECtx)
   : Option[DieselAsset[_]] = {
     resolve(flattenData, realm,
       ref,
@@ -416,12 +424,15 @@ object DomInventories extends razie.Logging {
   }
 
   /** for synchornous people */
-  def resolve (flattenData: Boolean, realm: String, ref: FullSpecRef, e: Either[DIQueryResult, EMsg]): DIQueryResult = {
+  def resolve (flattenData: Boolean, realm: String, ref: FullSpecRef, e: Either[DIQueryResult, EMsg])(implicit ctx: ECtx) : DIQueryResult = {
     // resolve EMrg's parameters in an empty context and run it and await?
     e.fold(
       p => p,
       m => {
-        val origp = DomEngineUtils.runMsgSync(new DieselMsg(m, DieselTarget.ENV(realm)), 30)
+        val (newe, origp) =
+          if (ctx.root.engine.isEmpty) DomEngineUtils.runMsgSync(new DieselMsg(m, DieselTarget.ENV(realm)).withSettings(ctx.root.settings), 30)
+          else runEngFork (m, ctx)
+
         var p = origp
 
         // todo add more info to queryResult:
@@ -512,12 +523,12 @@ object DomInventories extends razie.Logging {
   }
 
   /** for synchornous people */
-  def resolveEntity(realm: String, ref: FullSpecRef, e: Either[Option[DieselAsset[_]], EMsg]): Option[DieselAsset[_]] = {
+  def resolveEntity(realm: String, ref: FullSpecRef, e: Either[Option[DieselAsset[_]], EMsg])(implicit ctx: ECtx) : Option[DieselAsset[_]] = {
     // resolve EMrg's parameters in an empty context and run it and await?
     e.fold(
       p => p,
       m => {
-        var p = DomEngineUtils.runMsgSync(new DieselMsg(m, DieselTarget.ENV(realm)), 30)
+        var (newe, p) = DomEngineUtils.runMsgSync(new DieselMsg(m, DieselTarget.ENV(realm)).withSettings(ctx.root.settings), 30)
 
         if (p.isEmpty || !p.get.isOfType(WTypes.wt.JSON)) {
           log("sub-flow return nothing or not a list - so no asset found!")
@@ -578,7 +589,13 @@ object DomInventories extends razie.Logging {
         .filter(p => !origMap.exists(_._1 == p.name))
 
     val newMap = if (defaulted.isEmpty) Nil else {
-      val newCtx = new StaticECtx(origMap.map(t => t._2.copy(name = t._1).copyValueFrom(t._2)), Option(ctx))
+      val withTypes = origMap.map { t =>
+        val x = t._2.copy(name = t._1).copyValueFrom(t._2)
+        val cp = c.flatMap(_.parms.find(_.name == x.name))
+        if ((x.isUndefined || x.ttype.name == "" || x.ttype.name == WTypes.STRING) && cp.isDefined) x.copy(ttype = cp.get.ttype)
+        else x
+      }
+      val newCtx = new StaticECtx(withTypes, Option(ctx))
 
       defaulted
           .map(p => p.calculatedP(ctx = newCtx))

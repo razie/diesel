@@ -6,6 +6,7 @@
 package razie.diesel.dom
 
 import java.net.URI
+import razie.diesel.expr.ECtx
 import razie.tconf.{FullSpecRef, TSpecRef}
 import razie.wiki.Config
 import razie.wiki.model.WID
@@ -72,11 +73,11 @@ object DieselAssets {
   // ================================
 
   /** find an element by ref */
-  def findByRef(ref: FullSpecRef, collectRefs: Option[mutable.HashMap[String, String]] = None)
+  def findByRef(ref: FullSpecRef, collectRefs: Option[mutable.HashMap[String, String]] = None)(ctx: ECtx)
   : Option[DieselAsset[_]] = {
     val dom = WikiDomain(ref.realm)
     val p = dom.findPlugins(ref.inventory).headOption
-    val o = p.flatMap(x => DomInventories.resolve(false, ref.realm, ref, x.findByRef(dom.rdom, ref, collectRefs)))
+    val o = p.flatMap(x => DomInventories.resolve(false, ref.realm, ref, x.findByRef(dom.rdom, ref, collectRefs))(ctx=ctx))
     o
   }
 

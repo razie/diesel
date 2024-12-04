@@ -6,12 +6,12 @@
   **/
 package razie.diesel.engine.exec
 
-import model.DieselSettings
+import controllers.Profile
+import model.{DieselSettings, Users, WikiScripster}
 import java.io.{File, FileInputStream}
 import java.lang.management.{ManagementFactory, OperatingSystemMXBean}
 import java.lang.reflect.Modifier
 import java.util.Properties
-import model.WikiScripster
 import razie.{cdebug, clog}
 import razie.db.RazMongo
 import razie.diesel.Diesel
@@ -26,11 +26,12 @@ import razie.diesel.model.DieselMsg
 import razie.diesel.utils.DomCollector
 import razie.hosting.Website
 import razie.wiki.admin.GlobalData
-import razie.wiki.model.{WikiCache, WikiConfigChanged}
+import razie.wiki.model.{WikiCache, WikiConfigChanged, WikiEvent}
 import razie.wiki.{Config, Enc, Services}
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.collection.mutable.{HashMap, LinkedHashMap, ListBuffer, TreeMap}
+import scala.concurrent.Future
 import scala.io.Source
 import scala.util.Try
 import services.DieselCluster
@@ -124,6 +125,26 @@ class EEDieselExecutors extends EExecutor("diesel.props") {
 
         List(
           EVal(P.fromTypedValue(result, m))
+        )
+      }
+
+      case "diesel.realm.setEnv" => {
+
+        val env = ctx.get("env").getOrElse(Diesel.PAYLOAD)
+
+        val auo = ctx.root.settings.user.orElse(ctx.root.settings.userId.flatMap(Users.findUserById))
+        if (Services.config.isLocalhost && auo.isDefined) {
+          /** set user's preferred current environment */
+            val au = auo.get
+            au.update(au.setPrefs(realm, Map("dieselEnv" -> env)))
+          Services ! WikiEvent("AUTH_CLEAN", "User", au._id.toString, Some(au))
+          Services.auth.cleanAuth2(au)
+        } else {
+          throw new IllegalArgumentException("Error: No permission")
+        }
+
+        List(
+          EVal(P.fromTypedValue(Diesel.PAYLOAD, env))
         )
       }
 
