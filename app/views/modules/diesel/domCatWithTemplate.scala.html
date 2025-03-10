@@ -2,7 +2,7 @@
 browse a domain
 **************@
 @import razie.diesel.dom.RDOM
-@import play.twirl.api.TemplateMagic.defining
+@import play.twirl.api.TwirlFeatureImports.defining
 @import razie.wiki.model.WikiEntry
 @(realm:String, cat:String, middle:List[String], left:List[RDOM.A], right:List[RDOM.A], o:Option[RDOM.O]=None, template:WikiEntry, content:String)(mkLink:(String,String,Option[RDOM.A])=>String)(implicit stok: controllers.StateOk)
 @import razie.diesel.dom.DomInventories

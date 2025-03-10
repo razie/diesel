@@ -526,7 +526,7 @@ class DomainController extends RazController with Logging {
   }
 
   /** recalculate the computed fields of an object, considering the other values */
-  def recalcForm(cat:String) = FAU { implicit au => implicit errCollector => implicit request =>
+  def recalcForm(cat:String, skipFields:String) = FAU { implicit au => implicit errCollector => implicit request =>
 
     // get body of post as orig
     val body = P.fromTypedValue("this", request.body.asJson.get.toString, WTypes.wt.JSON).withSchema(cat)
@@ -539,7 +539,7 @@ class DomainController extends RazController with Logging {
     val c = rdom.classes.get(cat)
 
     val bodyAsList = body.value.get.asJson.map (t=> (t._1, P.fromSmartTypedValue(t._1, t._2))).toList
-    val obj = DomInventories.calculatedClassAttributes(body, bodyAsList, c)(ctxFromReq(razRequest).withDomain(rdom))
+    val obj = DomInventories.calculatedClassAttributes(body, bodyAsList, c, skipFields.split(",").toList)(ctxFromReq(razRequest).withDomain(rdom))
 
     Ok(razie.js.tojsons(obj.toMap)).as("application/json")
   }

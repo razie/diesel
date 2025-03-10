@@ -597,25 +597,49 @@ object DomInventories extends razie.Logging {
       }
       val newCtx = new StaticECtx(withTypes, Option(ctx))
 
+      // todo there is a weirdness where the recalculated depdencies are not reincluded in the context
+      // make it so there is a newer ctx including the recalculated values for each parm based on parents...
+
       defaulted
           .map(p => p.calculatedP(ctx = newCtx))
-          .map(p => (exname(p.name), p)) // expand interpolated string
+          .map(p => (expandNameAsExpr(p.name), p)) // expand interpolated string
     }
 
     newMap
   }
 
-  def calculatedClassAttributes(thiss:P, origMap: List[(String, P)], c: Option[C])(implicit ctx: ECtx) = {
-    val list = c
+  /** calculate attributes with excache */
+  def calculatedClassAttributes(thiss:P, origMap: List[(String, P)], c: Option[C], skipFields:List[String])(implicit ctx: ECtx) = {
+    var classParms = c
         .toList
         .flatMap(_.parms.filter(_.stereotypes.contains("excache")))
 
-    val newMap = if (list.isEmpty) Nil else {
+    // todo refine this sort to parse {...} expressions better
+      classParms = classParms.sortWith((a,b)=> b.expr.exists(_.expr.contains("{" + a.name + "}")))
+
+    // todo order by excache expr depyendencies
+
+    // start with default values
+    val newMap = if (classParms.isEmpty) Nil else {
       val newCtx = new StaticECtx(thiss :: origMap.map(t => t._2.copy(name = t._1).copyValueFrom(t._2)), Option(ctx))
 
-      list
-          .map(p => p.calculatedP(ctx = newCtx))
-          .map(p => (exname(p.name), p)) /* expand interpolated string*/
+     // todo there is a weirdness where it takes two trips because the recalculated depdencies are not reincluded in the context
+     // make it so there is a newer ctx including the recalculated values for each parm based on parents...
+
+      // use expressions
+      classParms
+        // if skip then use current/orig value if present, otherwise recalculate
+        // A. this version would still return them with existing values
+//          .map { p =>
+//            origMap.find(o => skipFields.contains(p.name)).map(_._2).getOrElse(p.calculatedP(ctx = newCtx))
+//          }
+        // B. this will just skip them from return - client recalls their values
+          .filter(p=> !skipFields.contains(p.name))
+          .map { p =>
+            (p.calculatedP(ctx = newCtx))
+          }
+        // nice names - names can also be interpolated
+          .map(p => (expandNameAsExpr(p.name), p)) /* expand interpolated string in name */
           .filter(! _._2.isUndefinedOrEmpty)
           .map (t=> (t._1, t._2.currentStringValue))
     }
@@ -623,7 +647,8 @@ object DomInventories extends razie.Logging {
     newMap
   }
 
-  def exname(s: String)(implicit ctx: ECtx) = {
+  /** recalculate value as expression if it is interpolated string */
+  def expandNameAsExpr(s: String)(implicit ctx: ECtx) = {
     if (s contains "${") CExpr(s).apply("")
     else s
   }

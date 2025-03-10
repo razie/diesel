@@ -2,7 +2,7 @@
 Create a domain object / cat
 **************@
 @import razie.diesel.dom.{RDOM, RDomain}
-@import play.twirl.api.TemplateMagic.defining
+@import play.twirl.api.TwirlFeatureImports.defining
 @import razie.diesel.dom.WikiDomain
 @(plugin:String, conn:String, realm:String, cat:String, left:List[RDOM.A], right:List[RDOM.A], domain:WikiDomain, currValues:List[(String,RDOM.P)], errors:Map[String,String])(mkLink:(String,String,Option[RDOM.A])=>String)(implicit stok: controllers.StateOk)
 @import mod.diesel.model.Diesel
@@ -47,10 +47,12 @@ Create a domain object / cat
 <p></p>
 
       </form>
-      <script>
+
+<script>
 
 recalculatedNames = '@{domain.rdom.classes.get(cat).get.parms.filter(_.stereotypes.contains("excache")).map(_.name).mkString(",")}';
 recalculated = recalculatedNames.split(",");
+skipFields = ""; // manually edited fields
 
 require(['jquery', 'weCommons'], function($) {
 
@@ -84,10 +86,16 @@ require(['jquery', 'weCommons'], function($) {
     });
   }
 
+  // remove field from don't skip and recalculate
+  weDomFormRecalculateWithField = function (name) {
+    skipFields = skipFields.replace(',' + name, '');
+    weDomRecalculateFormData();
+  }
+
   weDomRecalculateFormData = function () {
     var data = getFormData($("form#myForm"));
     $.ajax({
-      url: '/diesel/dom/recalcForm/@cat',
+      url: '/diesel/dom/recalcForm/@cat?skipFields='+skipFields,
       type: 'post',
       data: JSON.stringify(data),
       contentType: 'application/json',
@@ -104,8 +112,12 @@ require(['jquery', 'weCommons'], function($) {
 
   @if(page.form.canEdit && hasRecalc(domain.rdom.classes.get(cat))) {
     $("form#myForm :input[type=text]").on( "blur", function() {
-      if(! recalculated.includes($(this).attr("name")))
-        weDomRecalculateFormData();
+      // I manually edited this
+      var name = $(this).attr("name");
+      // if(! recalculated.includes(name))
+      if(!skipFields.includes(name) && recalculated.includes(name)) skipFields = skipFields + "," + name;
+      // recalc every time I touch a field, but pass skipped fields
+      weDomRecalculateFormData();
     } );
   }
 

@@ -164,6 +164,14 @@ object RDOM {
       }.mkString
     }
 
+    // todo speed up
+    /** is this parm a prerequisite on any other parm value expressions */
+    def formIsParmPrerequisite (prereq:String) = parms.filter(_.isexcache).exists(_.expr.exists(_.expr.contains("{"+prereq+"}")))
+
+    // todo
+    /** is this parm a dependent on any other parm value expressions */
+    def formParmDependencies (resultingParm:String) : Array[String] = Nil.toArray
+
     // todo cache this toj
     def toj = Map (
       "name" -> name,
@@ -332,111 +340,118 @@ object RDOM {
         expectedType
       }
 
-      val res = v match {
-        case i: P => i.copy(name = name)
-        case i: PValue[_] => new P(name, asString(i.value), i.cType).withValue(i.value, i.cType)
-        case i: Boolean => new P(name, "", WTypes.wt.BOOLEAN).withCachedValue(i, WTypes.wt.BOOLEAN, asString(i))
-        case i: Int => new P(name, "", WTypes.wt.NUMBER).withCachedValue(i, WTypes.wt.NUMBER, asString(i))
-        case i: Long => new P(name, "", WTypes.wt.NUMBER).withCachedValue(i, WTypes.wt.NUMBER, asString(i))
-        case f: Float => new P(name, "", WTypes.wt.NUMBER).withCachedValue(f, WTypes.wt.NUMBER, asString(f))
-        case d: Double => new P(name, "", WTypes.wt.NUMBER).withCachedValue(d, WTypes.wt.NUMBER, asString(d))
-        case d: Throwable => new P(name, "", WTypes.wt.EXCEPTION).withCachedValue(d, WTypes.wt.EXCEPTION, d.getMessage)
+      try {
+        val res = v match {
+          case i: P => i.copy(name = name)
+          case i: PValue[_] => new P(name, asString(i.value), i.cType).withValue(i.value, i.cType)
+          case i: Boolean => new P(name, "", WTypes.wt.BOOLEAN).withCachedValue(i, WTypes.wt.BOOLEAN, asString(i))
+          case i: Int => new P(name, "", WTypes.wt.NUMBER).withCachedValue(i, WTypes.wt.NUMBER, asString(i))
+          case i: Long => new P(name, "", WTypes.wt.NUMBER).withCachedValue(i, WTypes.wt.NUMBER, asString(i))
+          case f: Float => new P(name, "", WTypes.wt.NUMBER).withCachedValue(f, WTypes.wt.NUMBER, asString(f))
+          case d: Double => new P(name, "", WTypes.wt.NUMBER).withCachedValue(d, WTypes.wt.NUMBER, asString(d))
+          case d: Throwable => new P(name, "", WTypes.wt.EXCEPTION).withCachedValue(d, WTypes.wt.EXCEPTION,
+            d.getMessage)
 
-        case d: Date => {
-          val tsFmtr = DateTimeFormatter.ofPattern(WTypes.DATE_FORMAT).withZone(ZoneId.from(ZoneOffset.UTC))
-          val ts = tsFmtr.format(d.toInstant)
-          new P(name, "", WTypes.wt.DATE).withCachedValue(ts, WTypes.wt.DATE, ts)
-        }
+          case d: Date => {
+            val tsFmtr = DateTimeFormatter.ofPattern(WTypes.DATE_FORMAT).withZone(ZoneId.from(ZoneOffset.UTC))
+            val ts = tsFmtr.format(d.toInstant)
+            new P(name, "", WTypes.wt.DATE).withCachedValue(ts, WTypes.wt.DATE, ts)
+          }
 
-        case s: ParmSource => new P(name, "Source", WTypes.wt.SOURCE).withValue(s, WTypes.wt.SOURCE)
+          case s: ParmSource => new P(name, "Source", WTypes.wt.SOURCE).withValue(s, WTypes.wt.SOURCE)
 
-        case i: java.lang.Integer =>
-          new P(name, "", WTypes.wt.NUMBER).withCachedValue(i.longValue, WTypes.wt.NUMBER, asString(i))
-        case i: java.lang.Boolean =>
-          new P(name, "", WTypes.wt.BOOLEAN).withCachedValue(i.booleanValue, WTypes.wt.BOOLEAN, asString(i))
-        case i: java.lang.Float =>
-          new P(name, "", WTypes.wt.NUMBER).withCachedValue(i.floatValue, WTypes.wt.NUMBER, asString(i))
-        case i: java.lang.Double =>
-          new P(name, "", WTypes.wt.NUMBER).withCachedValue(i.doubleValue, WTypes.wt.NUMBER, asString(i))
-        case i: java.lang.Long =>
-          new P(name, "", WTypes.wt.NUMBER).withCachedValue(i.longValue, WTypes.wt.NUMBER, asString(i))
+          case i: java.lang.Integer =>
+            new P(name, "", WTypes.wt.NUMBER).withCachedValue(i.longValue, WTypes.wt.NUMBER, asString(i))
+          case i: java.lang.Boolean =>
+            new P(name, "", WTypes.wt.BOOLEAN).withCachedValue(i.booleanValue, WTypes.wt.BOOLEAN, asString(i))
+          case i: java.lang.Float =>
+            new P(name, "", WTypes.wt.NUMBER).withCachedValue(i.floatValue, WTypes.wt.NUMBER, asString(i))
+          case i: java.lang.Double =>
+            new P(name, "", WTypes.wt.NUMBER).withCachedValue(i.doubleValue, WTypes.wt.NUMBER, asString(i))
+          case i: java.lang.Long =>
+            new P(name, "", WTypes.wt.NUMBER).withCachedValue(i.longValue, WTypes.wt.NUMBER, asString(i))
 
-        // must be before Seq
-        case r: Range => new P(name, "", WTypes.wt.RANGE).withCachedValue(r, WTypes.wt.RANGE, asString(r))
-        // the "" dflt will force usage of value
+          // must be before Seq
+          case r: Range => new P(name, "", WTypes.wt.RANGE).withCachedValue(r, WTypes.wt.RANGE, asString(r))
+          // the "" dflt will force usage of value
 
-        // first get the map
-        case s: collection.mutable.Map[_, _] =>
-          new P(name, "", expOrElse(WTypes.wt.JSON)).withValue(s, expOrElse(WTypes.wt.JSON))
+          // first get the map
+          case s: collection.mutable.Map[_, _] =>
+            new P(name, "", expOrElse(WTypes.wt.JSON)).withValue(s, expOrElse(WTypes.wt.JSON))
 
-        case s: collection.Map[_, _] => {
-          // use mutable map so we can assign later
-          val hm = mapToMutable(s)
-          new P(name, "", expOrElse(WTypes.wt.JSON)).withValue(hm, expOrElse(WTypes.wt.JSON))
-        }
-        case s: collection.Seq[_] => new P(name, "", expOrElse(WTypes.wt.ARRAY)).withValue(s, expOrElse(WTypes.wt.ARRAY))
-        case s: JSONObject => new P(name, "", expOrElse(WTypes.wt.JSON)).withValue(js.fromObject(s),
-          expOrElse(WTypes.wt.JSON))
-        case s: JSONArray => new P(name, "", expOrElse(WTypes.wt.ARRAY)).withValue(js.fromArray(s),
-          expOrElse(WTypes.wt.ARRAY))
+          case s: collection.Map[_, _] => {
+            // use mutable map so we can assign later
+            val hm = mapToMutable(s)
+            new P(name, "", expOrElse(WTypes.wt.JSON)).withValue(hm, expOrElse(WTypes.wt.JSON))
+          }
+          case s: collection.Seq[_] => new P(name, "", expOrElse(WTypes.wt.ARRAY)).withValue(s,
+            expOrElse(WTypes.wt.ARRAY))
+          case s: JSONObject => new P(name, "", expOrElse(WTypes.wt.JSON)).withValue(js.fromObject(s),
+            expOrElse(WTypes.wt.JSON))
+          case s: JSONArray => new P(name, "", expOrElse(WTypes.wt.ARRAY)).withValue(js.fromArray(s),
+            expOrElse(WTypes.wt.ARRAY))
 
-        case x: scala.xml.Elem =>
-          new P(name, "", WTypes.wt.XML).withCachedValue(x, WTypes.wt.XML, "")
+          case x: scala.xml.Elem =>
+            new P(name, "", WTypes.wt.XML).withCachedValue(x, WTypes.wt.XML, "")
 
-        case s: String => {
-          try {
-            expectedType match {
-              case WType(WTypes.JSON, _, _, _) => new P(name, "", expectedType).withCachedValue(
-                js.fromObject(new JSONObject(s)), expectedType, s)
-              case WType(WTypes.ARRAY, _, _, _) => new P(name, "", expectedType).withCachedValue(
-                js.fromArray(new JSONArray(s)), expectedType, s)
-              case WType(WTypes.BOOLEAN, _, _, _) => new P(name, "", expectedType).withCachedValue(s.toBoolean,
-                expectedType, s)
-              case WType(WTypes.NUMBER, _, _, _) => new P(name, "", expectedType).withCachedValue(s.toFloat,
-                expectedType,
-                s)
+          case s: String => {
+            try {
+              expectedType match {
+                case WType(WTypes.JSON, _, _, _) => new P(name, "", expectedType).withCachedValue(
+                  js.fromObject(new JSONObject(s)), expectedType, s)
+                case WType(WTypes.ARRAY, _, _, _) => new P(name, "", expectedType).withCachedValue(
+                  js.fromArray(new JSONArray(s)), expectedType, s)
+                case WType(WTypes.BOOLEAN, _, _, _) => new P(name, "", expectedType).withCachedValue(s.toBoolean,
+                  expectedType, s)
+                case WType(WTypes.NUMBER, _, _, _) => new P(name, "", expectedType).withCachedValue(s.toFloat,
+                  expectedType,
+                  s)
 
-              case WType(WTypes.STRING, _, _, _) => new P(name, "", expectedType).withCachedValue(s, expectedType, s)
-              case WType(WTypes.DATE, _, _, _) => new P(name, "", expectedType).withCachedValue(s, expectedType, s)
-              case WType(WTypes.HTML, _, _, _) => new P(name, "", expectedType).withCachedValue(s, expectedType, s)
+                case WType(WTypes.STRING, _, _, _) => new P(name, "", expectedType).withCachedValue(s, expectedType, s)
+                case WType(WTypes.DATE, _, _, _) => new P(name, "", expectedType).withCachedValue(s, expectedType, s)
+                case WType(WTypes.HTML, _, _, _) => new P(name, "", expectedType).withCachedValue(s, expectedType, s)
 
-              case WType(WTypes.EXCEPTION, _, _, _) => new P(name, s, expectedType)
+                case WType(WTypes.EXCEPTION, _, _, _) => new P(name, s, expectedType)
 
-              case WType(WTypes.REF, _, _, _) => new P(name, s, expectedType)
+                case WType(WTypes.REF, _, _, _) => new P(name, s, expectedType)
 
-              case WType(WTypes.MSG, _, _, _) => new P(name, s, expectedType)
+                case WType(WTypes.MSG, _, _, _) => new P(name, s, expectedType)
 
-              case WType(WTypes.URL, _, _, _) => new P(name, s, expectedType)
+                case WType(WTypes.URL, _, _, _) => new P(name, s, expectedType)
 
-              case WType(WTypes.PASSWORD, _, _, _) => new P(name, s, expectedType)
+                case WType(WTypes.PASSWORD, _, _, _) => new P(name, s, expectedType)
 
-              case WType(_, _, _, true) => new P(name, s, expectedType) // a ref to smth else
+                case WType(_, _, _, true) => new P(name, s, expectedType) // a ref to smth else
 
-              case _ if expectedType.trim.length > 0 =>
-                throw new DieselExprException(s"$expectedType is an unknown type")
+                case _ if expectedType.trim.length > 0 =>
+                  throw new DieselExprException(s"$expectedType is an unknown type")
 
-              case _ => new P(name, s, WTypes.wt.STRING).withCachedValue(s, WTypes.wt.STRING, s)
-            }
-          } catch {
-            case t:Throwable => {
-              val msg = s"Can't parse String into $expectedType :" + s
-              razie.Log.error(msg, t)
-              throw new DieselExprException(msg).initCause(t)
+                case _ => new P(name, s, WTypes.wt.STRING).withCachedValue(s, WTypes.wt.STRING, s)
+              }
+            } catch {
+              case t: Throwable => {
+                val msg = s"Can't parse String into $expectedType :" + s
+                razie.Log.error(msg, t)
+                throw new DieselExprException(msg).initCause(t)
+              }
             }
           }
+
+          // java object - it's better to create this yourself
+          case x@_ if expectedType == WTypes.OBJECT => new P(name, "", expectedType).withValue(v, expectedType)
+
+          case x@_ => new P(name, x.toString, WTypes.wt.UNKNOWN).withValue(x.toString, WTypes.wt.UNKNOWN)
         }
 
-        // java object - it's better to create this yourself
-        case x@_ if expectedType == WTypes.OBJECT => new P(name, "", expectedType).withValue(v, expectedType)
+        // assert expected type if given
+        if (expectedType != WTypes.UNKNOWN && expectedType != "" && res.ttype != expectedType)
+          throw new DieselExprException(s"$name of type ${res.ttype} not of expected type $expectedType")
 
-        case x@_ => new P(name, x.toString, WTypes.wt.UNKNOWN).withValue(x.toString, WTypes.wt.UNKNOWN)
+        res
+      } catch {
+        case t:Throwable =>
+          throw new DieselExprException(s"Can't parse Parm $name expected type $expectedType - underlying cause: " +t.getMessage).initCause(t)
       }
-
-      // assert expected type if given
-      if (expectedType != WTypes.UNKNOWN && expectedType != "" && res.ttype != expectedType)
-        throw new DieselExprException(s"$name of type ${res.ttype} not of expected type $expectedType")
-
-      res
     }
 
     def mapToMutable(s: collection.Map[_, _]): collection.mutable.HashMap[String, Any] = {
@@ -647,6 +662,8 @@ object RDOM {
     def withCachedValue[T](va: T, ctype: WType, cached: String) = {
       this.copy(ttype = ctype, value = Some(PValue[T](va, ctype).withStringCache(cached)))
     }
+
+    def isexcache = this.stereotypes.contains("excache")
 
     def isRequired = optional.compareTo("?") != 0
 

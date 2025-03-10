@@ -1290,12 +1290,14 @@ class Wikie @Inject()(config: Configuration, realmCtl:Realm) extends WikieBase {
         val like = if (how == 1) Some(au) else None
         val dislike = if (how == 0) Some(au) else None
         (w.copy(
+          // active user liked it
           userFeedback = List(ulike) ::: w.userFeedback,
           likes = like.map(_._id.toString).toList ::: w.likes,
           dislikes = dislike.map(_._id.toString).toList ::: w.dislikes,
           dislikeReasons = (if (how == 1 || reason.trim.isEmpty) Nil else List(reason)) ::: w.dislikeReasons
         ))
       } orElse {
+        // anonymous liked it
         Some(w.copy(likeCount = w.likeCount + how, dislikeCount = w.dislikeCount + (if (how == 0) 1 else 0)))
       };
       upd <- before(newVer, WikiAudit.UPD_LIKE) orErr ("Not allowed")

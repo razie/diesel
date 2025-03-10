@@ -2,7 +2,7 @@
 show an existing object or just category
 **************@
 @import razie.diesel.dom.RDOM
-@import play.twirl.api.TemplateMagic.defining
+@import play.twirl.api.TwirlFeatureImports.defining
 @(realm:String, cat:String, middle:List[String], left:List[RDOM.A], right:List[RDOM.A], o:Option[RDOM.O]=None)(mkLink:(String,String,Option[RDOM.A])=>String)(implicit stok: controllers.StateOk)
 @import razie.diesel.dom.DomInventories
 @import razie.diesel.dom.WikiDomain

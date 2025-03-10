@@ -6,7 +6,7 @@ creates the navigation bar
 @import razie.diesel.guard.DomGuardian
 @import razie.diesel.engine.DomDocs
 @import razie.wiki.Enc
-@import play.twirl.api.TemplateMagic.defining
+@import play.twirl.api.TwirlFeatureImports.defining
 @import razie.diesel.guard.DomGuardian
 @import services.DieselCluster
 @(user:Option[razie.wiki.model.WikiUser], realm:String=razie.wiki.model.Wikis.RK, mobile:Boolean = false, barTitle: String="Bar Title", logo:Option[String]=None, url:Option[String]=Some("/"), club:String="")(implicit stok: controllers.StateOk)
@@ -238,9 +238,11 @@ require(['jquery'], function($){
       }
 
       case None => {
+        @if(! web().navrMenuRemove.contains("Login") ) {
         <li>
           <a href="@web().join">Log in</a>
         </li>
+        }
       }
     }
 

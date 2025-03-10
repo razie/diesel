@@ -216,6 +216,12 @@ object Diesel {
       } else ""
       ) +
       c.parms.map{p=>
+        // recalc button
+        val recalc = if(p.isexcache)
+          s"""<a href="javascript:weDomFormRecalculateWithField('${p.name}')" title="Recalculate this one too">
+             |<span class="glyphicon glyphicon-repeat" title="Toggle dom browser guidance"></span>
+             |</a>""".stripMargin else ""
+
       "<tr>\n  <td>" + (
         if(WTypes.STRING.equalsIgnoreCase(p.ttype.name) ||
             WTypes.REGEX.equalsIgnoreCase(p.ttype.name) ||
@@ -225,17 +231,17 @@ object Diesel {
           val enums = c.enumForParm(p.name)
           if (enums.length > 0) {
             val choices = enums.split(",").mkString("|", "|", "")
-            s"""${p.name} </td>\n  <td> {{f:${p.name}:type=select,choices=$choices}}"""
+            s"""${p.name} </td>\n  <td> {{f:${p.name}:type=select,choices=$choices}} $recalc"""
           } else {
-            s"""${p.name} </td>\n  <td> {{f:${p.name}:}}"""
+            s"""${p.name} </td>\n  <td> {{f:${p.name}:}} $recalc"""
           }
         } else if(WTypes.NUMBER.equalsIgnoreCase(p.ttype.name) ||
             WTypes.INT.equalsIgnoreCase(p.ttype.name) ||
             WTypes.FLOAT.equalsIgnoreCase(p.ttype.name)
         )
-          s"""${p.name} </td>\n  <td> {{f:${p.name}:type=number}}"""
+          s"""${p.name} </td>\n  <td> {{f:${p.name}:type=number}} $recalc"""
         else if(WTypes.DATE.equalsIgnoreCase(p.ttype.name))
-          s"""${p.name} </td>\n  <td> {{f:${p.name}:type=date}}"""
+          s"""${p.name} </td>\n  <td> {{f:${p.name}:type=date}} $recalc"""
         else if(p.ttype.name == "Image")
           s"""${p.name} </td>\n  <td> {{f:${p.name}:}} Image URL"""
         else {

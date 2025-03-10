@@ -52,6 +52,7 @@ wiki fragment, used in another page
         <span class="glyphicon glyphicon-thumbs-up" title="You already rated this topic"></span>
       }
 
+      @******* todo why show likes/unlikes only to mods? *******@
       @if(stok.au.exists(_.isMod)) {
         @if(page.exists(w => w.likes.size > 0 || w.likeCount > 0)) {
           <span style="font-size: x-small">@{page.get.likes.size+page.get.likeCount}</span>
@@ -69,6 +70,7 @@ wiki fragment, used in another page
         <span class="glyphicon glyphicon-thumbs-down" title="You already rated this topic"></span>
       }
 
+      @*** todo why show likes/unlikes only to mods? ***@
       @if(stok.au.exists(_.isMod)) {
         @if(page.exists(w=> w.dislikes.size > 0 || w.dislikeCount>0)) {
           <span style="font-size: x-small">@{page.get.dislikes.size+page.get.dislikeCount}</span>
@@ -81,7 +83,7 @@ wiki fragment, used in another page
 
     <small>
         <em>By</em>:
-        @**todo use separate page for missing users **@
+        @** todo use separate page for missing users **@
         <a href="/user/@model.Users.nameOf(page.get.by)">@model.Users.nameOf(page.get.by)</a>
         | <small>
           @page.get.crDtm.toLocalDate().toString

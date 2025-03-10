@@ -30,7 +30,10 @@ case class TopicList (
 
 //    cdebug << "TOPICLIST: " + wid.wpathFull + "\n" + ilinks.mkString(" \n ")
 
-    ilinks.filter(_.role.exists(_ == "step")).flatMap(_.wid.uwid).toSeq
+    val rr1 = ilinks.filter(_.role.exists(_ == "step"))
+    // really need to get my act together here in these lookups...
+    val ret = rr1.flatMap(x => x.wid.uwid)
+    ret
   })
 
   /** traverse topic lists recursively while matching it up with progress records - use it to paint
