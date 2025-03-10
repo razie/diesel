@@ -108,10 +108,13 @@ object DomEngineView {
     case d@DomAst(n: ExpectV, _, _, _) /*if DomState.isDone(d.status)*/ => n
   })).size
 
-  def failedTestCount(nodes: List[DomAst]): Int = (nodes.flatMap(_.collect {
-    case d@DomAst(n: TestResult, _, _, _) if n.value.startsWith("fail") => n
-    case d@DomAst(n: EError, _, _, _) if !n.handled => n
-  })).size
+  def failedTestCount(nodes: List[DomAst]): Int = {
+    val l = (nodes.flatMap(_.collect {
+      case d@DomAst(n: TestResult, _, _, _) if n.value.startsWith("fail") => n
+      case d@DomAst(n: EError, _, _, _) if !n.handled => n
+    }))
+      l.size
+  }
   // not add storyStats because we keep erorred stories intact
 
   def errorCount(nodes: List[DomAst]): Int = (nodes.flatMap(_.collect {

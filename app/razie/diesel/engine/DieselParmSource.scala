@@ -222,7 +222,7 @@ class DieselParmSource (ctx:DomEngECtx) extends ParmSource {
 
   def put(p: P): Unit = p.name match {
     // for "env" we could override locally only
-    case _ => throw new DieselException("Can't overwrite values in this context!")
+    case _ => throw new DieselException(s"Can't overwrite values in this context (DieselParmSource:$name)!")
   }
 
   def listAttrs: List[String] = List("env", "user", "isLocalhost", "isLocaldevbox", "props", "realm", "server", "engine")

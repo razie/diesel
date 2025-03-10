@@ -26,7 +26,7 @@ case class JBlockExpr(ex: List[(String, Expr)], schema:Option[String]=None) exte
 //    val orig = template(expr)
 
     val origMap = ex
-        .map(t => (DomInventories.exname(t._1), t._2)) // expand interpolated string
+        .map(t => (DomInventories.expandNameAsExpr(t._1), t._2)) // expand interpolated string
         .map(t => (t._1, t._2.applyTyped(v)))
 
 
