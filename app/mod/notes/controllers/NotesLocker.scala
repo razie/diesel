@@ -21,6 +21,7 @@ import razie.wiki.model._
 import razie.wiki.parser.ParserCommons
 import razie.wiki.{Enc, Services, WikiConfig}
 import razie.{Logging, cout, js}
+import scala.collection.mutable
 import scala.util.parsing.input.Positional
 
 /** autosaved notes */
@@ -933,6 +934,11 @@ case class NotesOk(curTag: String, tags: model.Tags.Tags, msg: Seq[(String, Stri
   val realm = Website.realm(request)
 
   val stok = new StateOk(realm, Option(au), Option(request))
+
+  val _metas = new mutable.HashMap[String,String]() // moremetas
+  /** add a meta to this page's header */
+  def meta(name:String, content:String) = {this._metas.put(name, content); ""}
+  def metas = _metas.toMap
 
   def css = {
     val ret =

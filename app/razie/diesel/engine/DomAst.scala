@@ -6,7 +6,7 @@
 package razie.diesel.engine
 
 import org.bson.types.ObjectId
-import razie.diesel.engine.nodes.{CanHtml, EDuration, EError, EInfo, EMsg, ETrace, EVal, HasPosition}
+import razie.diesel.engine.nodes.{CanHtml, EDuration, EError, EInfo, EMsg, ETrace, EVal, HasPosition, StoryNode}
 import razie.diesel.expr.ECtx
 import scala.collection.mutable.ListBuffer
 
@@ -216,7 +216,19 @@ case class DomAst(
 
   /** prune story - call this on Story nodes */
   def removeTestDetails(): Unit = {
-    childrenCol.foreach(_.childrenCol.clear())
+
+    // todo this must be smarter and traverse and prun back - there are now stories in stories and test results on deeper levels, with diesel.expect etc
+
+    //only if children do not contain story nodes
+    val tokill = childrenCol.filter {x=>
+      // todo optimize - use like a findFirst or such
+    val stories = x.find {
+      d => d.value.isInstanceOf[StoryNode]
+    }
+    stories.isEmpty
+    }
+
+    tokill.foreach(_.childrenCol.clear())
   }
 
   //============== traversal
@@ -242,6 +254,9 @@ case class DomAst(
     val res = new ListBuffer[T]()
 
     def inspect(d: DomAst, level: Int): Unit = {
+      if(level > 100) {
+        throw new DieselException("Recursion problem at: " + this.value.toString)
+      }
       if (f.isDefinedAt(d)) res append f(d)
       d.children.foreach(inspect(_, level + 1))
     }
@@ -255,6 +270,7 @@ case class DomAst(
     val res = new ListBuffer[T]()
 
     def inspect(d: DomAst, level: Int): Unit = {
+      if(level > 100) throw new DieselException("Recursion problem at: " + this.value.toString)
       if(filter.isDefinedAt(d) && filter(d)) {
         if (f.isDefinedAt(d)) res append f(d)
         d.children.foreach(inspect(_, level + 1))
@@ -277,6 +293,27 @@ case class DomAst(
     inspect(this, 0)
     res.toList
   }
+
+  /** find in subtree, by id */
+  def find(id:String) : Option[DomAst] =
+    if(this.id == id)
+      Option(this)
+    else
+      children.foldLeft(None: Option[DomAst])((a, b) => a orElse b.find(id))
+
+  /** find in subtree, by predicate */
+  def find(pred: DomAst => Boolean): Option[DomAst] =
+    if (pred(this))
+      Option(this)
+    else
+      children.foldLeft(None: Option[DomAst])((a, b) => a orElse b.find(pred))
+
+  /** find looking up to the root, by predicate */
+  def findParent(pred: DomAst => Boolean): Option[DomAst] =
+    if (pred(this))
+      Option(this)
+    else
+      parent.flatMap(_.findParent(pred))
 
   //================= view
 
@@ -308,7 +345,8 @@ case class DomAst(
         if(html) "" else this.status
       } else {
         if (html)
-          s""" <span class="glyphicon glyphicon-exclamation-sign" style="color:red" title="State: $status"></span>"""
+          s""" <span style="color:#ff3e3e" title="State: $status"><img src="https://cdn.razie.com/Public/spinner.gif" height="10" width="10"></span>"""
+//          s""" <span class="glyphicon glyphicon-exclamation-sign" style="color:#ff3e3e" title="State: $status"></span>"""
         else this.status
       }
     }
@@ -408,27 +446,6 @@ case class DomAst(
     case d@DomAst(m:HasPosition, _, _, _) => m.pos
     case _ => None
   }
-
-  /** find in subtree, by id */
-  def find(id:String) : Option[DomAst] =
-    if(this.id == id)
-      Option(this)
-    else
-      children.foldLeft(None: Option[DomAst])((a, b) => a orElse b.find(id))
-
-  /** find in subtree, by predicate */
-  def find(pred: DomAst => Boolean): Option[DomAst] =
-    if (pred(this))
-      Option(this)
-    else
-      children.foldLeft(None: Option[DomAst])((a, b) => a orElse b.find(pred))
-
-  /** find looking up to the root, by predicate */
-  def findParent(pred: DomAst => Boolean): Option[DomAst] =
-    if (pred(this))
-      Option(this)
-    else
-      parent.flatMap(_.findParent(pred))
 
   def setKinds(kkk: String): DomAst = {
     this.kind = kkk
