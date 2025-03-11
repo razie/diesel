@@ -9,7 +9,7 @@ msg types are msg, err
 
 @stok.stok.requireJs(false)
 
-@htmlHead(stok._title, Some(stok.stok), None)(Map.empty, Some(stok.au), Some(stok.request))
+@htmlHead(stok._title, Some(stok.stok), None)(stok.metas, Some(stok.au), Some(stok.request))
 @navbar(Some(stok.au))(stok.stok)
 
   <div class="container" style="margin-top: 15px">

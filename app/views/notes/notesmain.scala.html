@@ -11,6 +11,9 @@ msg types are msg, err
 @import mod.notes.controllers.routes
 
 @stok.title("Create a note")
+@if(!stok.au.isActive) {
+  @stok.meta("robots", "noindex, nofollow")
+}
 
 <h3>Creative <small>| preview</small> @notes.notesmsg(stok.msg)
   <div style="float:right">
@@ -74,14 +77,12 @@ function removePins() {
 
   @helper.inputText(
     myForm("tags"),
-    '_label -> Html("""
-       <div class="col-sm-12" style="padding-left:0px; display:inline-block;">
-       Tags <small>i.e. note,todo,forjohn,phone,email,contact,project1</small>
-  <div style="float:right">
-      <a class="btn btn-xs btn-default" onclick="larger()" title="This is not twitter, eh?">+ Larger</a>
-  </div>
-       </div>
-       """),
+    '_label -> Html("""<div class="col-sm-12" style="padding-left:0px; display:inline-block;">
+Tags <small>i.e. note,todo,forjohn,phone,email,contact,project1</small>
+<div style="float:right">
+<a class="btn btn-xs btn-default" onclick="larger()" title="This is not twitter, eh?">+ Larger</a>
+</div>
+</div>"""),
     'class -> "col-sm-12",
     'style -> "padding-left:5px",
     'autocomplete -> "off",

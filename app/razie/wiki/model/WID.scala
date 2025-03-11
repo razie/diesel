@@ -171,9 +171,9 @@ case class WID(
         idx.get2(name, this).map((cat, _))
       else {
         // get by name and see if cat we found is NOCATS
-        idx.get1k(name).filter(x=>
-          WID.NOCATS.contains(x.cat)
-        ).headOption.flatMap(x=>
+        idx.get1k(name).find(x =>
+          WID.NOCATS.contains(x.cat) || curRealm.isEmpty
+        ).flatMap(x=>
           idx.get2(name, x)).map((cat, _)
         )
         //todo maybe forget this branch and enhance equals to look at nocats ?
@@ -212,6 +212,7 @@ case class WID(
       (this.section.isEmpty && o.section.isEmpty || this.section == o.section)
     case _ => false
   }
+
   def uwid = findCatId() map {x=>UWID(x._1, x._2, realm)}
 
   /** cat with realm */
