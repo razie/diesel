@@ -219,7 +219,7 @@ object Diesel {
         // recalc button
         val recalc = if(p.isexcache)
           s"""<a href="javascript:weDomFormRecalculateWithField('${p.name}')" title="Recalculate this one too">
-             |<span class="glyphicon glyphicon-repeat" title="Toggle dom browser guidance"></span>
+             |<span class="glyphicon glyphicon-repeat" title="Recalc dependent fields, even if overwritten!"></span>
              |</a>""".stripMargin else ""
 
       "<tr>\n  <td>" + (

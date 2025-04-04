@@ -147,7 +147,7 @@ class Application @Inject()(wikiCtl: Wiki, realmCtl:Realm) extends RazController
             Ok(views.html.util.newDb())
           }
         } else Future.successful {
-          ServiceUnavailable("If you imported a new realm, please reboot this instance!")
+          ServiceUnavailable(s"No home page found - If you imported a new realm, please reboot this instance!")
         }
       }
     }

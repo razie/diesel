@@ -75,7 +75,63 @@ Implicit.flash().put("bibi", "haha")
   }
 }
 
-@import helper.twitterBootstrap._
+@css() = @{ stok.css }
+
+  @if(css.contains("light")) {
+
+    <style>
+        .ace-sendline {
+          background-color: lightsalmon;
+          position:absolute;
+        }
+        .ace-ruleline {
+          background-color: #c6e7e7;
+          position:absolute;
+        }
+        .ace-headerline {
+          background-color: lightgoldenrodyellow;
+          font-weight: bold;
+          position:absolute;
+        }
+        .ace-primaryline {
+          background-color: yellow;
+          position:absolute;
+        }
+    </style>
+
+  } else {              @*** dark theme ***@
+
+    <style>
+        .ace-sendline {
+          background-color: #a95a5a;
+          position:absolute;
+        }
+        .ace-ruleline {
+          background-color: #2d65a6;
+          position:absolute;
+        }
+        .ace-headerline {
+          background-color: #727171;
+          font-weight: bold;
+          position:absolute;
+        }
+        .ace-primaryline {
+          background-color: #a73e25db;
+          position:absolute;
+        }
+        .ace-twilight .ace_marker-layer .ace_selection {
+          background: #a73e25db;
+        }
+
+        .ace-twilight .ace_comment {
+          color: #b3b3b3;
+        }
+
+    </style>
+  }
+
+
+  @import helper.twitterBootstrap._
 @import play.api.i18n.Messages.Implicits._
 
   <div id="bigOne">

@@ -298,7 +298,7 @@ withJquery(function(){
   applyDif = function(id,url) {
     $.ajax(
         url, {
-          type: 'GET',
+          type: 'POST',
           success: function(data) {
             if(data.indexOf("ok") == 0) {
               $('#row-'+id).fadeOut(250);
@@ -315,7 +315,7 @@ withJquery(function(){
 applyDifAsk = function(id,url) {
   if(confirm("You're sure you want to delete " + url + " ?")) $.ajax(
     url, {
-    type: 'GET',
+    type: 'POST',
     success: function(data) {
       if(data.indexOf("ok") == 0) {
         $('#row-'+id).fadeOut(250);
