@@ -114,7 +114,8 @@ trait DomParser extends ParserBase with ExprParser {
           val anno = ctx.we.get.collector.getOrElse(RDomain.DOM_ANNO_LIST, Nil).asInstanceOf[List[RDOM.P]]
           ctx.we.get.collector.remove(RDomain.DOM_ANNO_LIST)
 
-          var c = C(name, "", stereo.map(_.mkString).mkString,
+          // add stereo so we know it was parsed
+          var c = C(name, "", stereo.map(l=> (WikiDomain.PARSED_CAT :: l).mkString).mkString,
             ext.toList.flatten,
             tParm.map(_.mkString).mkString,
             attrs,
@@ -752,9 +753,9 @@ trait DomParser extends ParserBase with ExprParser {
   /** positionals to get positions during parsing */
   case class Keyw(s: String) extends Positional
 
-  private def keyw(r: Parser[String]) = positioned(r.map(s => Keyw(s)))
+  protected def keyw(r: Parser[String]) = positioned(r.map(s => Keyw(s)))
 
-  private def keyw(r: scala.util.matching.Regex) = positioned(pkeyw(r))
+  protected def keyw(r: scala.util.matching.Regex) = positioned(pkeyw(r))
 
   private def pkeyw(r: scala.util.matching.Regex): Parser[Keyw] = r ^^ {
     case s => Keyw(s)

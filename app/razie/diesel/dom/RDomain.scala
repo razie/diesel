@@ -252,8 +252,8 @@ object RDomain {
   /** crawl all domain pieces and build a domain */
   def domFrom (we:DSpec, filter:Option[PartialFunction[Any,Any]] = None) : Option[RDomain] = {
     val domList =
-      if(filter.isDefined) {
-        domFilter(we)(filter.get)
+      if (filter.isDefined) {
+        domFilter (we)(filter.get)
       } else {
         // copy paste but faster when no filter used...
 
@@ -272,8 +272,8 @@ object RDomain {
 
     //    if(we.tags.contains(R_DOM) || we.tags.contains(DSL_DOM))
     Some(
-      we.collector.getOrElseUpdate("razie/diesel/dom/dom", {
-        var x=new RDomain("-",
+      we.collector.getOrElseUpdate ("razie/diesel/dom/dom", {
+        val d = new RDomain("-",
           domList.collect {
             case c:C => (c.name, c)
           }.toMap,
@@ -289,8 +289,9 @@ object RDomain {
           domList.collect {
             case f:F => (f.name, f)
           }.toMap).withSpecs(List(we))
+
         // now collect everything else in more
-        x.moreElements.appendAll(
+        d.moreElements.appendAll(
           domList.filter {e=>
             !(e.isInstanceOf[A] ||
               e.isInstanceOf[C] ||
@@ -299,7 +300,7 @@ object RDomain {
               e.isInstanceOf[F])
           })
 
-        x
+        d
       }
       )) collect {
       case d:RDomain => d

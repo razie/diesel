@@ -22,7 +22,8 @@ trait ExprParser extends RegexParsers {
   def ws = whiteSpace
 
   // optional whiteSpace
-  def ows = opt(whiteSpace)
+  // todo include comments
+  def ows = opt(whiteSpace) // | "/\*.*\*/".r
 
 //  def pComment: Parser[String] = "//.*".r  | "(?m)/\\*(\\*(?!/)|[^*])*\\*/)".r ^^ {
 //def pComment: Parser[String] = """(\s|//.*|(?m)/\*(\*(?!/)|[^*])*\*/)+""".r ^^ {
@@ -497,14 +498,20 @@ private def accessorIdent: Parser[RDOM.P] = "." ~> ident ^^ { case id => P("", i
 
   // json object - sequence of nvp assignemnts separated with commas
   def jobj: Parser[Expr] = opt("new" ~ whiteSpace ~ qident) ~ ows ~
-      "{" ~ ows ~ repsep(jnvp <~ ows, ",\\s*".r) <~ ows ~ "}" ^^ {
-    case None ~ _ ~ _ ~ _ ~ li => JBlockExpr(li)
-    case Some(a ~ _ ~ b) ~ _ ~ _ ~ _ ~ li => JBlockExpr(li, Option(b))
+      "{" ~ ows ~ repsep(ojnvp <~ ows, ",\\s*(//.*)?".r) <~ ows ~ "}" ^^ {
+    case None ~ _ ~ _ ~ _ ~ li => JBlockExpr(li.flatten)
+    case Some(a ~ _ ~ b) ~ _ ~ _ ~ _ ~ li => JBlockExpr(li.flatten, Option(b))
+  }
+
+  // comment line or jnvp
+  def ojnvp: Parser[List[(String, Expr)]] = ows ~> ( "//.*".r | jnvp) ^^ {
+    case _ : String => Nil
+    case jn: (String, Expr) => List(unquote(jn._1) -> jn._2)
   }
 
   // one json block nvp pair
   def jnvp: Parser[(String, Expr)] = ows ~> jsonIdent ~ " *[:=] *".r ~ jexpr ^^ {
-    case name ~ _ ~ ex => (unquote(name), ex)
+    case name ~ _ ~ ex => (unquote(name.toString) -> ex)
   }
 
   // array generator with numbers (like a materialized range) [ 1 .. 2 ]

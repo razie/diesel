@@ -173,13 +173,14 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
           case _ if isNum(av) && isNum(bv) => {// if a is num, b will be converted to num
 
             val as = a(v).toString
-            if (as.contains(".")) {
+            val bs = b(v).toString
+            if (as.contains(".") || bs.contains(".")) {
               val ai = as.toFloat
-              val bi = b(v).toString.toFloat
+              val bi = bs.toFloat
               PValue(ai + bi, WTypes.wt.NUMBER)
             } else {
               val ai = as.toLong
-              val bi = b(v).toString.toLong
+              val bi = bs.toLong
               PValue(ai + bi, WTypes.wt.NUMBER)
             }
           }

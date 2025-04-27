@@ -151,8 +151,13 @@ class WikiDomainImpl (val realm:String, val wi:WikiInst) extends WikiDomain {
     ).getOrElse(true) // either no group name or groupname not found
   }
 
+  /** is this an actual wiki category or a user-defined class or imported concept ??? */
   override def isWikiCategory(cat: String): Boolean =
     rdom.classes.get(cat).exists(_.stereotypes.contains(WikiDomain.WIKI_CAT))
+
+  /** is this an actual wiki category or a user-defined class or imported concept ??? */
+  override def isParsedClass(cat: String): Boolean =
+    rdom.classes.get(cat).exists(_.stereotypes.contains(WikiDomain.PARSED_CAT))
 
   /** parse wiki categories into domain model - then you can add DSL constructs */
   override def createRDom : RDomain = {

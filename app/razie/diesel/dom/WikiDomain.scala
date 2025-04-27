@@ -82,10 +82,13 @@ trait WikiDomain {
   /** get access list */
   def canAccess(cat: C, o:Option[O], email:Option[String], perms:Option[Set[String]]): Boolean
 
-  /** is this an actual wiki category or a user-defined class or imported concept? */
-  def isWikiCategory(cat: String): Boolean
+  /** is this an actual wiki category or a user-defined class or imported concept ??? */
+  def isWikiCategory (cat: String): Boolean
 
-  /** does it know this class */
+  /** is this an actual wiki category or a user-defined class or imported concept ??? */
+  def isParsedClass (cat: String): Boolean
+
+  /** does it know this class (can be cat, class etc) */
   def containsCat (cat:String) = {
     // this may cause lots of recursion while loading
     if(!isLoading) rdom.classes.contains(cat)
@@ -124,6 +127,7 @@ trait WikiDomain {
 
 object WikiDomain {
   final val WIKI_CAT = "wikiCategory"
+  final val PARSED_CAT = "parsed"
 
   def apply(realm: String): WikiDomain = WikiReactors(realm).domain
 

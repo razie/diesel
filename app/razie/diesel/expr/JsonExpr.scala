@@ -39,10 +39,12 @@ case class JBlockExpr(ex: List[(String, Expr)], schema:Option[String]=None) exte
     // todo why am i building the string and then parse it when I have the list of P already ????
 
     val orig = (origMap ::: newMap)
-        .map(t => (t._1, t._2 match {
+        .map(t => (t._1,
+          t._2 match {
           case p@P(n, d, WTypes.wt.NUMBER, _, _, Some(PValue(i: Int, _)), _) => i
           case p@P(n, d, WTypes.wt.NUMBER, _, _, Some(PValue(i: Long, _)), _) => i
           case p@P(n, d, WTypes.wt.NUMBER, _, _, Some(PValue(i: Double, _)), _) => i
+          case p@P(n, d, WTypes.wt.NUMBER, _, _, Some(PValue(i: Float, _)), _) => i
 
           case p@P(n, d, WTypes.wt.BOOLEAN, _, _, Some(PValue(b: Boolean, _)), _) => b
 

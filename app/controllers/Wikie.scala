@@ -937,25 +937,47 @@ class Wikie @Inject()(config: Configuration, realmCtl:Realm) extends WikieBase {
     Msg("OK, page " + wid.wpath + " reported!", wid)
   }
 
-  def wikieCreate(cats: String, tags:String) = FAUR("wikieCreate") {implicit stok =>
+  /** todo default tag assocs - should be config'd */
+  val TAG_TO_CAT = Map (
+    "domain" -> "Spec"
+  )
+
+  /** todo default tag assocs - should be config'd */
+  def tagToCat (tag:String) : String = {
+    TAG_TO_CAT.getOrElse(tag, "Topic")
+  }
+
+  /** todo default tags for classes - should be config'd */
+  val CAT_TAGS = Map (
+    "Spec" -> "dsl",
+    "Story" -> "dsl"
+  )
+
+  def wikieCreate (cats: String, tags:String) = FAUR("wikieCreate") {implicit stok =>
     val name = ""
+    val ltags = tags.split(",")
     for (
       au <- stok.au;
       isMember <- (au.realms.contains(stok.realm) || au.isAdmin) orErr "not a website member"; // member
       can <- (stok.website.membersCanCreateTopics || au.isMod) orErr "members can't create topics"; // member
       cat <- CAT.unapply(cats);
-      wcat<- Wikis(cat.realm getOrElse getRealm()).category(cat.cat) orElse Wikis(cat.realm getOrElse getRealm()).category("Topic") orErr s"category ${cat.cat} not found"
+      wcat<- Wikis(cat.realm getOrElse getRealm()).category(cat.cat)  // wiki cat
+        orElse Wikis(cat.realm getOrElse getRealm()).category(tagToCat(ltags.head)) // in case it's not a cat or a class
+        orErr s"category ${cat.cat} not found"
     ) yield {
       val realm = getRealm(cat.realm.mkString)
-      if(WikiDomain(realm).isWikiCategory(cat.cat)) {
+      if(WikiDomain(realm).isParsedClass(cat.cat)) {
+        // diesel asset, not wiki
+        Redirect ("/doe/diesel/dom/startCreate/"+cat.cat)
+      }
+      else { //if(WikiDomain(realm).isWikiCategory(cat.cat)) {
+        // so tags go through here
+        val newTags = if (CAT_TAGS.contains(wcat.name)) (CAT_TAGS(wcat.name) :: ltags.toList).mkString(",") else tags
         ROK.k apply { implicit stok =>
           assert(stok.realm == (cat.realm getOrElse stok.realm))
           // use whatever cat I found...
-          views.html.wiki.wikieCreate(wcat.name, tags: String)
+          views.html.wiki.wikieCreate(wcat.name, newTags)
         }
-      } else {
-        // diesel asset, not wiki
-        Redirect ("/doe/diesel/dom/startCreate/"+cat.cat)
       }
     }
   }
