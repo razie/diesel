@@ -201,7 +201,7 @@ class DomainController extends RazController with Logging {
 
     if(oc.isEmpty) {
       if(checkCat)
-        throw new DieselException(s"Category $cat not found!", Option(401))
+        throw new DieselException(s"Domain class $cat not found!", Option(401))
       else
         (stok.realm, dom, rdom, null, oc, plugin, conn)
     } else {
