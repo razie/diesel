@@ -19,10 +19,10 @@ trait DomFiddleParser extends DomParser {
   private def trim(s: String) = s.replaceAll("\r", "").replaceAll("^\n|\n$", "") //.replaceAll("\n", "\\\\n'\n+'")
 
   // {{diesel name:type args}}
-  def pdfiddle: PS = "{{" ~> """dfiddle""".r ~ "[: ]+".r ~ """[^:}]*""".r ~ "[: ]*".r ~ """[^ :}]*""".r ~ optargs ~
+  def pdfiddle: PS = keyw("{{") ~> """dfiddle""".r ~ "[: ]+".r ~ """[^:}]*""".r ~ "[: ]*".r ~ """[^ :}]*""".r ~ optargs ~
       "}}" ~ opt(
     CRLF1 | CRLF3 | CRLF2) ~ slinesUntil("dfiddle") <~ "{{/dfiddle}}" ^^ {
-    case d ~ _ ~ name ~ _ ~ ltags ~ xargs ~ _ ~ _ ~ lines =>
+    case d ~ k ~ name ~ _ ~ ltags ~ xargs ~ _ ~ _ ~ lines =>
       var args = xargs.toMap
       val urlArgs = "&" + args.filter(_._1 != "anon").filter(_._1 != "spec").map(t => t._1 + "=" + t._2).mkString("&")
 
