@@ -393,7 +393,7 @@ class AdminImport extends AdminBase with Logging {
           }
       )
 
-      res._2.map { i =>
+      res._2.map { err =>
         val rs = razRequest(request).fqParm("restart", "yes").take(2)
         if (!(razRequest(request).fqParm("restart", "yes") == "no")) {
           Future {
@@ -403,7 +403,7 @@ class AdminImport extends AdminBase with Logging {
         }
 
         val cn4 = "%4d" format (res._1)
-        val er4 = "%4d" format (i)
+        val er4 = "%4d" format (err.size)
 
         val okres = (
           s"""
@@ -415,6 +415,8 @@ class AdminImport extends AdminBase with Logging {
              |*      RESTARTING THE PROCESS: $rs...                  *
              |*                                                      *
              |********************************************************
+             |
+             |Errors: ${err.mkString("\n")}
              |
              |""".stripMargin)
         log(okres)
@@ -460,7 +462,7 @@ class AdminImport extends AdminBase with Logging {
 
       import scala.concurrent.ExecutionContext.Implicits.global
 
-      res.map { i =>
+      res.map { err =>
         if (!(request.fqParm("restart", "yes") == "no")) {
           Future {
             Thread.sleep(2)
@@ -475,9 +477,11 @@ class AdminImport extends AdminBase with Logging {
              |*                                                      *
              |*      IMPORTED CONFIGURATION FROM REMOTE...           *
              |*            Total $tot wikis                          *
-             |*      $i errors... RESTARTING THE PROCESS...          *
+             |*      ${err.size} errors... RESTARTING THE PROCESS...          *
              |*                                                      *
              |********************************************************
+             |
+             |Errors: ${err.mkString("\n")}
              |
              |""".stripMargin)
         log(res)
@@ -504,7 +508,7 @@ class AdminImport extends AdminBase with Logging {
 
       import scala.concurrent.ExecutionContext.Implicits.global
 
-      res.map { i =>
+      res.map { err =>
         if (!(request.fqParm("restart", "yes") == "no")) {
           Future {
             Thread.sleep(2)
@@ -519,9 +523,11 @@ class AdminImport extends AdminBase with Logging {
              |*                                                      *
              |*      IMPORTED CONFIGURATION FROM REMOTE...           *
              |*            Total ??? wikis                           *
-             |*      $i errors... RESTARTING THE PROCESS...          *
+             |*      ${err.size} errors... RESTARTING THE PROCESS...          *
              |*                                                      *
              |********************************************************
+             |
+             |Errors: ${err.mkString("\n")}
              |
              |""".stripMargin).as("application/text")
       }
@@ -631,7 +637,7 @@ class AdminImport extends AdminBase with Logging {
          |</small>
          """.stripMargin
     )
-    countErr
+    errors
   }
 
   /** import a realm from remote
@@ -728,7 +734,7 @@ class AdminImport extends AdminBase with Logging {
          |</small>
          """.stripMargin
     )
-    countErr
+    errors
   }
 
   /** list all the topics from both realm and mixins, text/plain, one wpath per line

@@ -274,6 +274,7 @@ class AdminDiff extends AdminBase with Logging {
           .map(x => new WEAbstract(x))
           .toList
 
+      // do the diff
       val (lnew, lchanged, lremoved) =
         if (toRealm == "all" || toRealm == localRealm)
           // diff to remote
@@ -427,15 +428,32 @@ class AdminDiff extends AdminBase with Logging {
     * @return
     */
   def applyDiffFrom(localRealm: String, toRealm: String, targetHost: String, iwid: WID, leftId:String, rightId:String) = FAUR { implicit request =>
+    var newId = leftId.trim
     val remoteWid = iwid.r(if (toRealm == "all") iwid.getRealm else toRealm)
-    val localWid = if(leftId.trim.length > 0) Wikis.findById(leftId).map(x=> x.wid.withCachedPage(x)).get else remoteWid.r(localRealm)
+    val localWid = {
+      // if left existing, use it's wid
+      if(newId.trim.length > 0) Wikis.findById(newId).map(x=> x.wid.withCachedPage(x)).get
+      else {
+        // keep remote realm if defined
+        if (remoteWid.realm.isDefined) remoteWid
+          // well, else assume local realm
+        else remoteWid.r(localRealm)
+      }
+
+    }
 
     AdminDiff.getRemoteWE(targetHost, remoteWid)(request.au.get).fold({ t =>
+      if (newId.isEmpty) {
+        // new page from remote, use remoteID
+        // todo prevent ID clash by coincidence with other local IDs
+        newId = t._1._id.toString
+      }
+
       val protocol = if (request.hostUrlBase.startsWith("https")) "https" else "http"
       val b = body(
         // local url may be different from outside mappings and routings - it's accessed from this same server backend
         // todo still have an issue of http vs https - should this be configured?
-        url(protocol + "://" + Services.config.hostport + s"/wikie/setContent/${localWid.wpathFull}?id=$leftId")
+        url(protocol + "://" + Services.config.hostport + s"/wikie/setContent/${localWid.wpathFull}?id=$newId")
             .form(Map("we" -> t._2, "remote" -> targetHost))
             .basic("H-" + request.au.get.emailDec, "H-" + request.au.get.pwd.dec)
       )
