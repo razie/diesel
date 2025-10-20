@@ -720,30 +720,34 @@ class Wiki @Inject()(domainController: DomainController) extends WikiBase {
   }
 
   def xp(wid: WID, path: String, page: Option[WikiEntry] = None) = Action { implicit request =>
-    implicit val errCollector = new VErrors()
+    implicit val errCollector: VErrors = new VErrors()
     (for (
       worig <- xpRoot(wid, page);
       w <- worig.alias.flatMap(x => Wikis(wid.getRealm).find(x)).orElse(Some(worig)) orErr "no page" // TODO cascading aliases?
     ) yield {
-      val node = new WikiWrapper(wid)
-      val root = new razie.XpWrapper(node, WikiXpSolver)
+      (Try {
+        val node = new WikiWrapper(wid)
+        val root = new razie.XpWrapper(node, WikiXpSolver)
 
-      Audit.logdb("XP", wid.wpath + "/xp/" + path)
+        Audit.logdb("XP", wid.wpath + "/xp/" + path)
 
-      val xpath = "*/" + path
-      val res: List[Any] =
-        if(xpath.matches(".*/@\\((.*)\\)")) {
-          // report style: /ha/ha/@(name,wpath,url)
-          val names = xpath.replaceAll(".*/@\\((.*)\\)", "$1").split(",")
-          (root xpl xpath.replaceAll("/@.*", "")).collect {
-            case we: WikiWrapper => names.map{x=>
-              (x -> WikiXpSolver.getAttr(we, x))
-            }.toMap
-          }
-        } else if (razie.GPath(xpath).isAttr) (root xpla xpath)
-        else (root xpla (xpath+"/@wpath"))
+        val xpath = "*/" + path
+        val res: List[Any] =
+          if (xpath.matches(".*/@\\((.*)\\)")) {
+            // report style: /ha/ha/@(name,wpath,url)
+            val names = xpath.replaceAll(".*/@\\((.*)\\)", "$1").split(",")
+            (root xpl xpath.replaceAll("/@.*", "")).collect {
+              case we: WikiWrapper => names.map { x =>
+                (x -> WikiXpSolver.getAttr(we, x))
+              }.toMap
+            }
+          } else if (razie.GPath(xpath).isAttr) (root xpla xpath)
+          else (root xpla (xpath + "/@wpath"))
 
-      Ok(js.tojsons(res, 1)).as("application/json")
+        Ok(js.tojsons(res, 1)).as("application/json")
+      } recover  {
+        case e:Throwable => BadRequest("Error: " + wid + " XP " + path+" ERR: "+e.getLocalizedMessage)
+      }).get
     }) getOrElse
       Unauthorized("Nothing... for " + wid + " XP " + path+" ERR: "+errCollector.mkString)
   }
