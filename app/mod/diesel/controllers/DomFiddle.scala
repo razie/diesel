@@ -428,6 +428,8 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
 
       stimer snap "1_parse_req"
 
+      // we don't always run a story - fiddles can be in topics etc
+      val storyCat = WID.fromPath(storyWpath).map(_.cat).getOrElse("Story")
       val storyName = WID.fromPath(storyWpath).map(_.name).getOrElse("fiddle")
       val specName = WID.fromPath(specWpath).map(_.name).getOrElse("fiddle")
 
@@ -458,7 +460,7 @@ class DomFiddles extends DomApi with Logging with WikiAuthorization {
 
       stimer snap "2_parse_specs"
 
-      val storyPage = new WikiEntry("Story", storyName, storyName, "md", story, uid, Seq("dslObject"), stok.realm)
+      val storyPage = new WikiEntry(storyCat, storyName, storyName, "md", story, uid, Seq("dslObject"), stok.realm)
       storyPage.cacheable = false
 
       stimer snap "3_parse_story"
