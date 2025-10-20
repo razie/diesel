@@ -872,7 +872,7 @@ case class AExpr2(a: Expr, op: String, b: Expr) extends Expr {
             }
           }
           case m: JSONObject => {
-            val mres = new JSONObject(m, m.keySet.toArray(Array[String]()))
+            val mres = new JSONObject(m, m.keySet.toArray(Array[String]()):_*)
 //            m.foreach { t =>
 //              mres.put(t._1.toString, t._2)
 //            }
