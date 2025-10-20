@@ -1249,6 +1249,15 @@ class DomApi extends DomApiBase with Logging {
   }
 
   /** /diesel/mock/ path  */
+  def dieselRestAsync(path: String, verb:String, mocks:String) = runRest("/" + path, verb, mocks.charAt(0) == 'y')
+
+  /** /diesel/mock/ path  */
+  def dieselRestAsyncCheck(id: String) = runRest("", "", false)
+
+  /** /diesel/mock/ path  */
+  def dieselRestAsyncWait(id: String) = runRest("/", "", false)
+
+  /** /diesel/mock/ path  */
   def dieselMockGET(path: String) = runRest("/" + path, "GET", true)
   def dieselMockPOST(path: String) = runRest("/" + path, "POST", true)
   def dieselMockPUT(path: String) = runRest("/" + path, "PUT", true)
